@@ -16,6 +16,8 @@ import {
 	TextDocumentSyncKind,
 	InitializeResult,
 	DocumentDiagnosticReportKind,
+	SemanticTokensBuilder,
+	SemanticTokensLegend,
 	type DocumentDiagnosticReport
 } from 'vscode-languageserver/node';
 
@@ -33,6 +35,11 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
+
+const tokenTypes = ["keyword", "variable", "function", "string", "comment"];
+const tokenModifiers: string[] = [];
+
+const legend: SemanticTokensLegend = { tokenTypes, tokenModifiers };
 
 connection.onInitialize((params: InitializeParams) => {
 	const capabilities = params.capabilities;
@@ -61,7 +68,12 @@ connection.onInitialize((params: InitializeParams) => {
 			diagnosticProvider: {
 				interFileDependencies: false,
 				workspaceDiagnostics: false
-			}
+			},
+			semanticTokensProvider: {
+                legend,
+                range: false, // Change to true if you want partial updates
+                full: true
+            }
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -87,18 +99,18 @@ connection.onInitialized(() => {
 });
 
 // The example settings
-interface ExampleSettings {
+interface QlikLanguageServerSettings {
 	maxNumberOfProblems: number;
 }
 
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 // Please note that this is not the case when using this server with the client provided in this example
 // but could happen with other clients.
-const defaultSettings: ExampleSettings = { maxNumberOfProblems: 1000 };
-let globalSettings: ExampleSettings = defaultSettings;
+const defaultSettings: QlikLanguageServerSettings = { maxNumberOfProblems: 1000 };
+let globalSettings: QlikLanguageServerSettings = defaultSettings;
 
 // Cache the settings of all open documents
-const documentSettings = new Map<string, Thenable<ExampleSettings>>();
+const documentSettings = new Map<string, Thenable<QlikLanguageServerSettings>>();
 
 connection.onDidChangeConfiguration(change => {
 	if (hasConfigurationCapability) {
@@ -115,7 +127,7 @@ connection.onDidChangeConfiguration(change => {
 	connection.languages.diagnostics.refresh();
 });
 
-function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
+function getDocumentSettings(resource: string): Thenable<QlikLanguageServerSettings> {
 	if (!hasConfigurationCapability) {
 		return Promise.resolve(globalSettings);
 	}
@@ -244,6 +256,54 @@ connection.onCompletionResolve(
 		return item;
 	}
 );
+
+// Function to compute semantic tokens
+connection.onRequest("textDocument/semanticTokens/full", async (params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {return null;}
+
+    const builder = new SemanticTokensBuilder();
+    const text = document.getText();
+    const lines = text.split("\n");
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        const line = lines[lineIndex];
+
+        // Match keywords (example: "LOAD", "SELECT", "FROM")
+        const keywordRegex = /\b(LOAD|SELECT|FROM|WHERE|IF|ELSE|LET)\b/g;
+        let match;
+        while ((match = keywordRegex.exec(line)) !== null) {
+            builder.push(lineIndex, match.index, match[0].length, tokenTypes.indexOf("keyword"), 0);
+        }
+
+        // Match variables (example: variables starting with a `SET` statement)
+        const variableRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+        while ((match = variableRegex.exec(line)) !== null) {
+            builder.push(lineIndex, match.index, match[0].length, tokenTypes.indexOf("variable"), 0);
+        }
+
+        // Match function names (simple example)
+        const functionRegex = /\b(SUM|AVG|COUNT|NOW|DATE)\b/g;
+        while ((match = functionRegex.exec(line)) !== null) {
+            builder.push(lineIndex, match.index, match[0].length, tokenTypes.indexOf("function"), 0);
+        }
+
+        // Match strings (anything between double quotes or single quotes)
+        const stringRegex = /(["'])(?:(?=(\\?))\2.)*?\1/g;
+        while ((match = stringRegex.exec(line)) !== null) {
+            builder.push(lineIndex, match.index, match[0].length, tokenTypes.indexOf("string"), 0);
+        }
+
+        // Match comments (`//` for single-line comments)
+        const commentRegex = /\/\/.*/g;
+        while ((match = commentRegex.exec(line)) !== null) {
+            builder.push(lineIndex, match.index, match[0].length, tokenTypes.indexOf("comment"), 0);
+        }
+    }
+
+    return builder.build();
+});
+
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
