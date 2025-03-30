@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
+//import { Pattern } from 'glob/dist/commonjs/pattern';
 import * as path from 'path';
 import { workspace, ExtensionContext } from 'vscode';
 
@@ -16,6 +17,7 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
+	console.log('init extension');
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
@@ -34,7 +36,10 @@ export function activate(context: ExtensionContext) {
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
-		documentSelector: [{ scheme: 'file', language: 'qlik' }],
+		documentSelector: [
+			{ scheme: 'file', language: 'qvs' }
+			//'**/*.qvs'
+		],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
@@ -44,7 +49,7 @@ export function activate(context: ExtensionContext) {
 	// Create the language client and start the client.
 	client = new LanguageClient(
 		'qliklanguageServer',
-		'Language Server Example',
+		'Language Server Qlik',
 		serverOptions,
 		clientOptions
 	);
