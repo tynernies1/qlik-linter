@@ -177,7 +177,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 
 	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
-	const pattern = /\b[A-Z]{2,}\b/g;
+	const pattern = /\b[A-Z]{200,}\b/g;
 	let m: RegExpExecArray | null;
 
 	let problems = 0;
@@ -224,21 +224,17 @@ connection.onDidChangeWatchedFiles(_change => {
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
 	(_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-		// The pass parameter contains the position of the text document in
-		// which code complete got requested. For the example we ignore this
-		// info and always provide the same completion items.
-		return [
-			{
-				label: 'TypeScript',
-				kind: CompletionItemKind.Text,
-				data: 1
-			},
-			{
-				label: 'JavaScript',
-				kind: CompletionItemKind.Text,
-				data: 2
-			}
+		// Define a list of keywords for QVS
+		const keywords = [
+			"LOAD", "SELECT", "FROM", "WHERE", "JOIN", "GROUP BY", "ORDER BY", "SET", "LET"
 		];
+
+		// Convert keywords to CompletionItems
+		return keywords.map((keyword, index) => ({
+			label: keyword,
+			kind: CompletionItemKind.Keyword,
+			data: index
+		}));
 	}
 );
 
@@ -246,12 +242,9 @@ connection.onCompletion(
 // the completion list.
 connection.onCompletionResolve(
 	(item: CompletionItem): CompletionItem => {
-		if (item.data === 1) {
-			item.detail = 'TypeScript details';
-			item.documentation = 'TypeScript documentation';
-		} else if (item.data === 2) {
-			item.detail = 'JavaScript details';
-			item.documentation = 'JavaScript documentation';
+		if (item.kind === CompletionItemKind.Keyword) {
+			item.detail = 'QlikScript details';
+			item.documentation = 'QlikScript documentation';
 		}
 		return item;
 	}
