@@ -29,6 +29,12 @@
 				"configuration": "./language-configuration.json"
 			}
 		],
+		"semanticTokenColors": {
+            "table": {
+                "foreground": "#FF5733",
+                "bold": true
+            }
+        },
 		"configuration": {
 			"type": "object",
 			"title": "Qlik configuration",

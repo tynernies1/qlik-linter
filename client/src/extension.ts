@@ -53,7 +53,7 @@ export function activate(context: ExtensionContext) {
 		}
 	};
 
-	const legend = new SemanticTokensLegend(["keyword", "variable", "function", "string", "comment"]);
+	const legend = new SemanticTokensLegend(["keyword", "variable", "function", "string", "comment", "table"]);
 
 	const provider = languages.registerDocumentSemanticTokensProvider(
 		{ language: "qvs" },
