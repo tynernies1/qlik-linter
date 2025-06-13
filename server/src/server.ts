@@ -281,7 +281,6 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 
         if (startPosition.line !== endPosition.line) {
             for (let line = startPosition.line; line <= endPosition.line; line++) {
-				console.log("[Server] Processing multi-line comment line:", line);
                 const lineStart = (line === startPosition.line) ? startPosition.character : 0;
                 const lineEnd = (line === endPosition.line)
                     ? endPosition.character
