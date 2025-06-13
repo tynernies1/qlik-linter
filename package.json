@@ -9,7 +9,7 @@
 		"type": "git",
 		"url": "https://github.com/muehan/vs-qlik-languageserver"
 	},
-	"publisher": "Mühle André",
+	"publisher": "andremuehle",
 	"categories": [],
 	"keywords": [
 		"qlik", "qvs", "qliksense", "qlik sense", "qliksense script", "qlik sense script"
