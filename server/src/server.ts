@@ -6,7 +6,6 @@ import {
 	createConnection,
 	TextDocuments,
 	Diagnostic,
-	DiagnosticSeverity,
 	ProposedFeatures,
 	InitializeParams,
 	DidChangeConfigurationNotification,
@@ -24,6 +23,10 @@ import {
 import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
+
+import {
+	getLowercaseKeywordDiagnostics
+} from './linter/keywordsUppercase';
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -187,47 +190,17 @@ documents.onDidChangeContent(change => {
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
-	// In this simple example we get the settings for every validate run.
 	const settings = await getDocumentSettings(textDocument.uri);
-
-	// The validator creates diagnostics for all uppercase words length 2 and more
 	const text = textDocument.getText();
-	const pattern = /\b[A-Z]{200,}\b/g;
-	let m: RegExpExecArray | null;
 
-	let problems = 0;
+	// Collect diagnostics from all checkers
 	const diagnostics: Diagnostic[] = [];
-	while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-		problems++;
-		const diagnostic: Diagnostic = {
-			severity: DiagnosticSeverity.Warning,
-			range: {
-				start: textDocument.positionAt(m.index),
-				end: textDocument.positionAt(m.index + m[0].length)
-			},
-			message: `${m[0]} is all uppercase.`,
-			source: 'ex'
-		};
-		if (hasDiagnosticRelatedInformationCapability) {
-			diagnostic.relatedInformation = [
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Spelling matters'
-				},
-				{
-					location: {
-						uri: textDocument.uri,
-						range: Object.assign({}, diagnostic.range)
-					},
-					message: 'Particularly for names'
-				}
-			];
-		}
-		diagnostics.push(diagnostic);
-	}
+
+	// Check for lowercase keywords
+	diagnostics.push(...getLowercaseKeywordDiagnostics(text, textDocument, settings.maxNumberOfProblems, qlikKeywords));
+
+	// Add other diagnostic checks here in future, if needed
+
 	return diagnostics;
 }
 
