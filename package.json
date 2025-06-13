@@ -4,6 +4,7 @@
 	"author": "Mühle André",
 	"license": "GPL-3.0",
 	"version": "1.0.1",
+	"type": "commonjs",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/muehan/vs-qlik-languageserver"
@@ -60,7 +61,7 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -b",
+		"compile": "tsc -b && node ./server/copy-assets.js",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
