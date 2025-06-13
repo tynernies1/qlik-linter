@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, TextDocument, Range } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity, TextDocument } from 'vscode-languageserver';
 
 function getCommentRanges(text: string): { start: number; end: number }[] {
 	const ranges: { start: number; end: number }[] = [];
@@ -44,7 +44,6 @@ export function getLowercaseKeywordDiagnostics(
 		const keyword = match[0];
 		const index = match.index;
 
-		// Skip if inside a comment
 		if (isInComment(index, commentRanges)) {
 			continue;
 		}
