@@ -309,25 +309,35 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
         const collectMatches = (regex:any, tokenType:any) => {
             let match;
             while ((match = regex.exec(line)) !== null) {
-                if (match.index >= 0) {
-                    matches.push({ 
-						index: match.index, 
-						length: tokenType == "function" ? match[0].length -1 : match[0].length, 
-						tokenType });
-                }
+
+				try {
+					if (match.index >= 0) {
+						matches.push({ 
+							index: match.index, 
+							length: tokenType == "function" ? match[0].length -1 : match[0].length, 
+							tokenType });
+					}
+				} catch (e)
+				{
+					console.log(line);
+					console.log(tokenType);
+					console.log(match.index);
+					console.log(match.length);
+				}
             }
         };
 
         // Collect matches for all token types
 		
 		// Match keywords
-		collectMatches(/\b(LOAD|SELECT|TRACE|DISTINCT|FROM|WHERE|JOIN|DROP|NOT|SUB|END|GROUP|BY|LEFT|INLINE|FIELD|TABLE|AS|INNER|OUTER|IF|ELSE|LET|SET|AND|OR|NoConcatenate|RESIDENT|STORE|INTO|EXIT|SCRIPT|RENAME|TO)\b/gi, "keyword");
+		collectMatches(/\b(LOAD|SELECT|TRACE|DISTINCT|FROM|WHERE|JOIN|DROP|NOT|SUB|END|GROUP|BY|LEFT|INLINE|FIELD|TABLE|AS|INNER|OUTER|IF|ELSE|ELSEIF|THEN|FOR|NEXT|LET|SET|AND|OR|NoConcatenate|RESIDENT|STORE|INTO|EXIT|SCRIPT|RENAME|TO|CALL)\b/gi, "keyword");
 		
-		// Match functions
+		// detect function, ignore IF and JOIN
 		collectMatches(/\b(?!IF|JOIN\b)([A-Z_#]+)\s*\(/gi, "function");
 		
 		// Match functions that start with SUB
-		collectMatches(/\b(?<=\b(?:SUB)\s)([A-Z_#]+)\s*[\(]?/gi, "function");
+		collectMatches(/\b(?<=\b(?:SUB)\s)([A-Z0-9_#]+)\s*[\(]?/gi, "function");
+		collectMatches(/\b(?<=\b(?:CALL)\s)([A-Z0-9_#]+)?/gi, "function");
 		
 		// Match properties that start with @
 		collectMatches(/\@([0-9]*)/g, "property");
@@ -370,7 +380,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 		collectMatches(/(?<=\(|,)\s*[^(),]+?\s*(?=,|\))/g, "parameter");
 
 		// Match decorators that start with trace
-		collectMatches(/(?<=(?:trace)\s)[a-z0-9 >:$(_)]*/gi, "decorator");
+		collectMatches(/(?<=(?:trace)\s)[a-z0-9 >:$(_)'.]*/gi, "decorator");
 
 			// Sort matches by index to ensure correct ordering
 		matches.sort((a, b) => a.index - b.index);
