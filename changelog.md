@@ -6,3 +6,8 @@
 
 # Version 1.0.1
 - Add missing keywords
+
+# Version 1.0.2
+- Add more keywords
+- Fix function offset
+- Add keyword upper case linter
