@@ -337,7 +337,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 		
 		// Match functions that start with SUB
 		collectMatches(/\b(?<=\b(?:SUB)\s)([A-Z0-9_#]+)\s*[\(]?/gi, "function");
-		collectMatches(/\b(?<=\b(?:CALL)\s)([A-Z0-9_#]+)?/gi, "function");
+		collectMatches(/\b(?<=\b(?:CALL)\s)([A-Z0-9_#]+)\s*[\(|;]?/gi, "function");
 		
 		// Match properties that start with @
 		collectMatches(/\@([0-9]*)/g, "property");
