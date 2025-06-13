@@ -4,3 +4,5 @@ client/server
 .vscode-test
 .DS_Store
 .vsix
+validation/test.qvs
+validation/fullfile.qvs
