@@ -11,3 +11,6 @@
 - Add more keywords
 - Fix function offset
 - Add keyword upper case linter
+
+# Version 1.0.3
+- Add github action for publishing
