@@ -386,7 +386,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 		collectMatches(/(?<=(?:TO)\s)[\w,]+/gi, "class");
 
 		// Match parameters in function calls
-		collectMatches(/(?<=\(|,)\s*[^(),]+?\s*(?=,|\))/g, "parameter");
+		collectMatches(/(?<=\(|,)\s*[^(),'"]+?\s*(?=,|\))/g, "parameter");
 
 		// Match decorators that start with trace
 		collectMatches(/(?<=(?:trace)\s)[a-z0-9 >:$(_)'.]*/gi, "decorator");

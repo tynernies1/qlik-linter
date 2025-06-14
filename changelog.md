@@ -26,4 +26,5 @@
 - Bugfix function and class token
 
 # Version 1.0.7
-- Bufgix braket string with dash
+- Bugfix braket string with dash
+- Bugfix don't mark strings in parameters
