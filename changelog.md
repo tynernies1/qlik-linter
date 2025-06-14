@@ -19,4 +19,8 @@
 - Add codeAction for keyword to upper case quick fix
 
 # Version 1.0.5
+- Fix os related lineending bug in quickfix
+
+# Version 1.0.6
 - Fix linter warnings inside strings for uppercase linter check.
+- Bugfix function and class token
