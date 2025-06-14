@@ -6,3 +6,4 @@ client/server
 *.vsix
 validation/test.qvs
 validation/fullfile.qvs
+*.tsbuildinfo

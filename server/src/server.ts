@@ -17,7 +17,8 @@ import {
 	DocumentDiagnosticReportKind,
 	SemanticTokensBuilder,
 	SemanticTokensLegend,
-	type DocumentDiagnosticReport
+	type DocumentDiagnosticReport,
+	CodeAction
 } from 'vscode-languageserver/node';
 
 import {
@@ -30,6 +31,7 @@ import {
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { getUppercaseQuickfix } from './quickFix/keywordToUppercase';
 
 let qlikKeywords: string[] = [];
 
@@ -91,7 +93,8 @@ connection.onInitialize((params: InitializeParams) => {
 				legend,
 				range: false, // Change to true if you want partial updates
 				full: true
-			}
+			},
+			codeActionProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -165,7 +168,6 @@ documents.onDidClose(e => {
 	documentSettings.delete(e.document.uri);
 });
 
-
 connection.languages.diagnostics.on(async (params) => {
 	const document = documents.get(params.textDocument.uri);
 	if (document !== undefined) {
@@ -203,6 +205,30 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 
 	return diagnostics;
 }
+
+
+// Add this handler after your other connection handlers
+connection.onCodeAction(async (params) => {
+
+	console.log("onCodeAction triggered");
+	const document = documents.get(params.textDocument.uri);
+	if (!document) {
+		return [];
+	}
+
+	const diagnostics = params.context.diagnostics;
+	const text = document.getText();
+	const codeActions: CodeAction[] = [];
+
+	getUppercaseQuickfix(
+		diagnostics,
+		text,
+		params,
+		codeActions
+	);
+
+	return codeActions;
+});
 
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
@@ -315,7 +341,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 		//const keywordPattern = new RegExp(`\\b(${qlikKeywords.join('|')})\\b`, 'gi');
 		//collectMatches(keywordPattern, "keyword");
 		const keywordPattern = new RegExp(`\\b(${qlikKeywords.join('|')})\\b`, 'gi');
-        collectMatches(keywordPattern, "keyword");
+		collectMatches(keywordPattern, "keyword");
 
 		// detect function, ignore IF and JOIN
 		collectMatches(/\b(?!IF|JOIN\b)([A-Z_#]+)\s*\(/gi, "function");

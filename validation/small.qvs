@@ -1,0 +1,13 @@
+// asdf
+TEST:
+load
+    CustomerName
+from [lib://somepath/customer.qvs](qvs)
+;
+
+// asdf
+TEST:
+load
+    CustomerName
+from [lib://somepath/customer.qvs](qvs)
+;
