@@ -24,3 +24,6 @@
 # Version 1.0.6
 - Fix linter warnings inside strings for uppercase linter check.
 - Bugfix function and class token
+
+# Version 1.0.7
+- Bufgix braket string with dash
