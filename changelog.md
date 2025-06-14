@@ -28,3 +28,4 @@
 # Version 1.0.7
 - Bugfix braket string with dash
 - Bugfix don't mark strings in parameters
+- Bugfix SUB function match for OSx
