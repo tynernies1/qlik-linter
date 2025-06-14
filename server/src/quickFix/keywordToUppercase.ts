@@ -9,12 +9,14 @@ import {
 } from 'vscode-languageserver/node';
 
 function positionToOffset(text: string, position: Position): number {
-	
+	const isWindows = text.includes('\r\n');
+	const lineEndingLength = isWindows ? 2 : 1;
+
 	const lines = text.split(/\r?\n/g);
 	let offset = 0;
 	
 	for (let i = 0; i < position.line; i++) {
-		offset += lines[i].length + 2;
+		offset += lines[i].length + lineEndingLength;
 	}
 	
 	offset += position.character;
