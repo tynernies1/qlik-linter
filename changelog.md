@@ -17,3 +17,6 @@
 
 # Version 1.0.4
 - Add codeAction for keyword to upper case quick fix
+
+# Version 1.0.5
+- Fix linter warnings inside strings for uppercase linter check.

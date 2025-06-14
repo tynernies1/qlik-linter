@@ -26,7 +26,7 @@ import {
 } from 'vscode-languageserver-textdocument';
 
 import {
-	getLowercaseKeywordDiagnostics
+	getKeywordUppercaseDiagnostics
 } from './linter/keywordsUppercase';
 
 import * as fs from 'fs';
@@ -199,7 +199,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	const diagnostics: Diagnostic[] = [];
 
 	// Check for lowercase keywords
-	diagnostics.push(...getLowercaseKeywordDiagnostics(text, textDocument, settings.maxNumberOfProblems, qlikKeywords));
+	diagnostics.push(...getKeywordUppercaseDiagnostics(text, textDocument, settings.maxNumberOfProblems, qlikKeywords));
 
 	// Add other diagnostic checks here in future, if needed
 
@@ -210,7 +210,6 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 // Add this handler after your other connection handlers
 connection.onCodeAction(async (params) => {
 
-	console.log("onCodeAction triggered");
 	const document = documents.get(params.textDocument.uri);
 	if (!document) {
 		return [];
@@ -266,7 +265,6 @@ connection.onCompletionResolve(
 
 // Function to compute semantic tokens
 connection.onRequest("textDocument/semanticTokens/full", async (params) => {
-	console.log("[Server] onRequest textDocument/semanticTokens/full");
 	const document = documents.get(params.textDocument.uri);
 	if (!document) { return null; }
 
@@ -415,7 +413,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 	});
 
 	const result = builder.build();
-	console.log("[Server] Sending tokens:", result);
+	//console.log("[Server] Sending tokens:", result);
 	return result;
 });
 

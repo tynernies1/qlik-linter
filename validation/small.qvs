@@ -11,3 +11,6 @@ load
     CustomerName
 from [lib://somepath/customer.qvs](qvs)
 ;
+
+
+SET vText = 'asdfasdf to lore ipsum blabla from do not mark me as select';
