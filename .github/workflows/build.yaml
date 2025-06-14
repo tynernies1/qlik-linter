@@ -38,8 +38,7 @@ jobs:
       - name: vsce build
         run: npm run build
 
-      - name: vsce login
-        run: echo "${{ secrets.VSCE_PAT }}" | vsce login andremuehle --token
-
       - name: Publish extension
-        run: npm run publish
+        run: npm run publish --pat ${{ secrets.VSCE_TOKEN }}
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
