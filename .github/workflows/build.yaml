@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  install:
+  publish:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
