@@ -14,3 +14,6 @@
 
 # Version 1.0.3
 - Add github action for publishing
+
+# Version 1.0.4
+- Add codeAction for keyword to upper case quick fix

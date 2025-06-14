@@ -33,17 +33,11 @@ export function getUppercaseQuickfix(
 			diagnostic.message.startsWith('Qlik keyword') &&
 			diagnostic.message.includes('should be uppercase')
 		) {
-			console.log(diagnostic);
-
 			const range = diagnostic.range;
 			const startOffset = positionToOffset(text, range.start);
 			const endOffset = positionToOffset(text, range.end);
 			const keyword = text.substring(startOffset, endOffset);
 			const uppercaseKeyword = keyword.toUpperCase().trim();
-
-			console.log("keyword: " + keyword);
-			console.log("uppercaseKeyword: " + uppercaseKeyword);
-			console.log(range);
 
 			const edit: WorkspaceEdit = {
 				changes: {
@@ -54,7 +48,7 @@ export function getUppercaseQuickfix(
 			};
 
 			codeActions.push({
-				title: `Convert "${keyword}" to "${uppercaseKeyword}`,
+				title: `Convert "${keyword}" to "${uppercaseKeyword}"`,
 				kind: CodeActionKind.QuickFix,
 				diagnostics: [diagnostic],
 				edit
