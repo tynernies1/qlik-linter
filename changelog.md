@@ -29,3 +29,6 @@
 - Bugfix braket string with dash
 - Bugfix don't mark strings in parameters
 - Bugfix SUB function match for OSx
+
+# Version 1.0.8
+- Feature add operator token

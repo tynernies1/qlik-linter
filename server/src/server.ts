@@ -54,7 +54,7 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 
-const tokenTypes = ["keyword", "variable", "function", "string", "comment", "class", "parameter", "property", "decorator"];
+const tokenTypes = ["keyword", "variable", "function", "string", "comment", "class", "parameter", "property", "decorator", "operator"];
 const tokenModifiers: string[] = [];
 
 const legend: SemanticTokensLegend = { tokenTypes, tokenModifiers };
@@ -312,10 +312,10 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 
 	for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
 		const line = lines[lineIndex];
-		const matches: any[] = [];
+		const matches: { index: number, length: number, tokenType: string }[] = [];
 
 		// Helper function to collect matches
-		const collectMatches = (regex: any, tokenType: any) => {
+		const collectMatches = (regex: RegExp, tokenType: string) => {
 			let match;
 			while ((match = regex.exec(line)) !== null) {
 
@@ -327,8 +327,9 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 							tokenType
 						});
 					}
-				} catch (e) {
+				} catch (ex) {
 					console.log('error in line: ' + line);
+					throw ex;
 				}
 			}
 		};
@@ -359,7 +360,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 
 		// Match strings enclosed in single or double quotes
 		collectMatches(/(["'])(?:(?=(\\?))\2.)*?\1/g, "string");
-
+		
 		// Match strings that start with AS and end with ], allowing for any content in between
 		collectMatches(/(?<=(?:AS)\s)[\["]{1}[a-zA-Z0-9_\- ]*[\]"]{1}/gi, "string");
 
@@ -390,6 +391,9 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 
 		// Match decorators that start with trace
 		collectMatches(/(?<=(?:trace)\s)[a-z0-9 >:$(_)'.]*/gi, "decorator");
+
+		// Match operators
+		collectMatches(/<>|<=|>=|==|=|<|>|\+|-|\*|\/|%|&|\||!|~|<<|>>/g, "operator");
 
 		// Sort matches by index to ensure correct ordering
 		matches.sort((a, b) => a.index - b.index);
