@@ -197,7 +197,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	const settings = await getDocumentSettings(textDocument.uri);
 	const text = textDocument.getText();
 
-	if(settings.linter.active === false) {
+	if (settings.linter.active === false) {
 		// linter is disabled
 		return [];
 	}
@@ -278,7 +278,10 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 
 	const builder = new SemanticTokensBuilder();
 	const text = document.getText();
-	const lines = text.split("\n");
+	const lines = text
+		.replace(/\r(?!\n)/g, '\r\n')    // lone \r → \r\n
+		.replace(/(?<!\r)\n/g, '\r\n')  // lone \n → \r\n
+		.split("\n");
 
 	const tokenData: {
 		line: number;
@@ -336,7 +339,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 						});
 					}
 				} catch (ex) {
-					console.log('error in line: ' + line);
+					console.log('error in line: ' + line + ' with regex: ' + regex + ' and match: ' + match[0] + ' length: ' + match[0].length + ' and index: ' + match.index + ' with error: ' + ex);
 					throw ex;
 				}
 			}
@@ -354,7 +357,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 		collectMatches(/\b(?!IF|JOIN\b)([A-Z_#]+)\s*\(/gi, "function");
 
 		// Match functions that start with SUB
-		collectMatches(/\b(?<=\b(?:SUB)\s)([A-Z0-9_#]+)(\(|\r\n|\r|\n)/gi, "function");
+		collectMatches(/\b(?<=\b(?:SUB)\s)([A-Z0-9_#]+)(?=\(|\r)/gi, "function");
 		collectMatches(/\b(?<=\b(?:CALL)\s)([A-Z0-9_#]+)\s*[\(|;]?/gi, "function");
 
 		// Match properties that start with @
@@ -367,7 +370,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 		collectMatches(/(\$\([a-zA-Z0-9_.]*)\)/g, "variable");
 
 		// Match strings enclosed in single or double quotes
-		collectMatches(/(["'])(?:(?=(\\?))\2.)*?\1/g, "string");
+		collectMatches(/["'](?:(?=(\\?)).)*?["']/g, "string");
 
 		// Match strings that start with AS and end with ], allowing for any content in between
 		collectMatches(/(?<=(?:AS)\s)[\["]{1}[a-zA-Z0-9_\-+%/\\&$# ]*[\]"]{1}/gi, "string");
@@ -400,7 +403,8 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 		collectMatches(/(?<=(?:trace)\s)[a-z0-9 >:$(_)'.]*/gi, "decorator");
 
 		// Match operators
-		collectMatches(/<>|<=|>=|==|=|<|>|\+|-|\*|\/|%|&|\||!|~|<<|>>/g, "operator");
+		// find a solution for / not to be seen in paths and comments
+		collectMatches(/<>|<=|>=|==|=|<|>|\+|-|\*|%|&|\||!|~|<<|>>/g, "operator");
 
 		// Sort matches by index to ensure correct ordering
 		matches.sort((a, b) => a.index - b.index);

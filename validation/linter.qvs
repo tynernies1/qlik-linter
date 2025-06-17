@@ -8,6 +8,10 @@ LOAD
     ,Floor(IF(hco_MAT_sales>7000 ,$(HighAbs),IF(hco_MAT_sales>3000 and hco_MAT_sales<=7000 ,$(MediumAbs),if(hco_MAT_sales<3000                         ,$(LowAbs),$(ZeroAbs)))) * 0.5 +          "prescribing behaviour vaxneuvance"  * 0.5) as prescribing_behaviour_vaxneuvance
 RESIDENT Final_potential_HPV;
 
+SUB LOAD_ALL_CUSTOMERS
+
+END SUB;
+
 Airports:
 LOAD
     *
