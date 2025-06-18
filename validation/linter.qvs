@@ -1,0 +1,30 @@
+
+D_TABLENAME:
+NoConcatenate
+LOAD 
+    *
+    ,Floor(IF(hco_MAT_sales>10000,$(HighAbs),if(hco_MAT_sales>5000 and hco_MAT_sales<=10000,$(MediumAbs),if(hco_MAT_sales<5000 and hco_MAT_sales > 1000,$(LowAbs),$(ZeroAbs)))) * 0.5 + Coalesce("Prescribing behaviour Gardasil9",0) * 0.5) as prescribing_behaviour
+    ,Floor(IF(hco_MAT_sales>5000 ,$(HighAbs),if(hco_MAT_sales>2000 and hco_MAT_sales<=5000 ,$(MediumAbs),if(hco_MAT_sales<2000                         ,$(LowAbs),$(ZeroAbs)))) * 0.5 +          "prescribing behaviour Proquad"      * 0.5) as prescribing_behaviour_proquad,Floor(IF(hco_MAT_sales>5000 ,$(HighAbs),if(hco_MAT_sales>2000 and hco_MAT_sales<=5000 ,$(MediumAbs),if(hco_MAT_sales<2000                         ,$(LowAbs),$(ZeroAbs)))) * 0.5 +          "prescribing behaviour Proquad"      * 0.5) as prescribing_behaviour_proquad,Floor(IF(hco_MAT_sales>5000 ,$(HighAbs),if(hco_MAT_sales>2000 and hco_MAT_sales<=5000 ,$(MediumAbs),if(hco_MAT_sales<2000                         ,$(LowAbs),$(ZeroAbs)))) * 0.5 +          "prescribing behaviour Proquad"      * 0.5) as prescribing_behaviour_proquad,Floor(IF(hco_MAT_sales>5000 ,$(HighAbs),if(hco_MAT_sales>2000 and hco_MAT_sales<=5000 ,$(MediumAbs),if(hco_MAT_sales<2000                         ,$(LowAbs),$(ZeroAbs)))) * 0.5 +          "prescribing behaviour Proquad"      * 0.5) as prescribing_behaviour_proquad
+    ,Floor(IF(hco_MAT_sales>7000 ,$(HighAbs),IF(hco_MAT_sales>3000 and hco_MAT_sales<=7000 ,$(MediumAbs),if(hco_MAT_sales<3000                         ,$(LowAbs),$(ZeroAbs)))) * 0.5 +          "prescribing behaviour vaxneuvance"  * 0.5) as prescribing_behaviour_vaxneuvance
+RESIDENT Final_potential_HPV;
+
+SUB LOAD_ALL_CUSTOMERS
+
+END SUB;
+
+Airports:
+LOAD
+    *
+    ,sum(asdf) as sum_asdf
+    ,Floor(1,2,3,4)
+    ,Floor(IF(1=2,1,2)) as Floor_test
+    ,[column1]          as [column1]
+    ,[column2]          as [column1-_test]
+FROM [lib://some/path/o/file.qvd](qvd);    
+
+Test:
+LOAD
+    column1,
+ columne2,
+    columne3
+FROM [lib://some/path/to/file.qvd](qvd)

@@ -32,3 +32,8 @@
 
 # Version 1.0.8
 - Feature add operator token
+- Feature add configuration setting
+- Bugfix change AS-String regex
+
+# Version 1.0.9
+- Bugfix line ending on none windows systems
