@@ -119,7 +119,5 @@ export function semanticTokenFinder(
 		});
 	}
 
-	console.log("[Server] Found tokens:", tokenData.length);
-
 	return tokenData;
 }

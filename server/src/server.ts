@@ -36,6 +36,7 @@ import { multilineCommentToken } from './semanicToken/multilineCommentToken';
 import { ITokenData } from './semanicToken/ITokenData';
 import { QlikLanguageServerSettings } from './configuration/QlikLanguageServerSettings';
 import { semanticTokenFinder } from './semanicToken/semanticTokenFinder';
+import { getAsAlignmentDiagnostics } from './linter/asAlingment';
 
 let qlikKeywords: string[] = [];
 
@@ -211,6 +212,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	// Check for lowercase keywords
 	if (settings.linter.keywordsUppercase) {
 		diagnostics.push(...getKeywordUppercaseDiagnostics(text, textDocument, settings.maxNumberOfProblems, qlikKeywords));
+		diagnostics.push(...getAsAlignmentDiagnostics(text, textDocument, settings.maxNumberOfProblems));
 	}
 	// Add other diagnostic checks here in future, if needed
 
