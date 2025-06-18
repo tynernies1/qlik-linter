@@ -41,3 +41,6 @@
 # Version 1.0.10
 - Refactoring
 - Feature AS alingment linter
+
+# Version 1.0.11
+- Feature AS alingment linter setting

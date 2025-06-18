@@ -131,7 +131,8 @@ const defaultSettings: QlikLanguageServerSettings = {
 	maxNumberOfProblems: 1000,
 	linter: {
 		active: true,
-		keywordsUppercase: true
+		keywordsUppercase: true,
+		asAlingment: true
 	}
 };
 let globalSettings: QlikLanguageServerSettings = defaultSettings;
@@ -209,9 +210,11 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	// Collect diagnostics from all checkers
 	const diagnostics: Diagnostic[] = [];
 
-	// Check for lowercase keywords
 	if (settings.linter.keywordsUppercase) {
 		diagnostics.push(...getKeywordUppercaseDiagnostics(text, textDocument, settings.maxNumberOfProblems, qlikKeywords));
+	}
+
+	if (settings.linter.asAlingment) {
 		diagnostics.push(...getAsAlignmentDiagnostics(text, textDocument, settings.maxNumberOfProblems));
 	}
 	// Add other diagnostic checks here in future, if needed
