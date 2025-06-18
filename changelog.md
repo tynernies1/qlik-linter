@@ -37,3 +37,7 @@
 
 # Version 1.0.9
 - Bugfix line ending on none windows systems
+
+# Version 1.1.0
+- Refactoring
+- Feature AS alingment linter
