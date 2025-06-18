@@ -9,7 +9,8 @@ LOAD
 RESIDENT Final_potential_HPV;
 
 SUB LOAD_ALL_CUSTOMERS
-
+    LET test = $(MediumAbs);
+    LET test = @11;
 END SUB;
 
 Airports:
