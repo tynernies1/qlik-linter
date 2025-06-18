@@ -1,0 +1,32 @@
+ASDRITORY:
+LOAD  //distinct
+    "ASD_code"                          AS  "%ASD Key"
+    ,ASD_code                           AS "ASDritory Code"
+    ,'Y'                               AS "ASDritory Splice Active Flag"
+    ,b_Place_key                        AS %Splice
+    ,asdfasdf
+    ,b_Place_key                        AS %PlaceKey
+    ,AutoNumber('B' & b_Place_key)        AS %PlaceKeyAuto
+    ,replace("ASD_code",'CH_','')       AS ASDritoryName
+FROM [lib://$(vG.asdf)vw_f_asdritory.qvd](qvd)
+WHERE
+    "ASD_code" like 'CH_%'
+    AND "ASD_code" is NOT null
+    AND "ASD_code" <> ''
+
+
+ASDRITORY2:
+LOAD  //distinct
+    "ASD_code"                               AS  "%ASD Key"
+    ,ASD_code                                AS "ASDritory Code"
+    ,'Y'                                     AS "ASDritory Splice Active Flag"
+    ,b_Place_key                             AS %Splice
+    ,asdfasdf
+    ,b_Place_key                             AS %PlaceKey
+    ,AutoNumber('B' & b_Place_key)           AS %PlaceKeyAuto
+    ,replace("ASD_code",'CH_','')            AS ASDritoryName
+RESIDENT [lib://$(vG.asdf)vw_f_asdritory.qvd](qvd)
+WHERE
+    "ASD_code" like 'CH_%'
+    AND "ASD_code" is NOT null
+    AND "ASD_code" <> ''
