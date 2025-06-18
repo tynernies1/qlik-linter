@@ -32,6 +32,8 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { getUppercaseQuickfix } from './quickFix/keywordToUppercase';
+import { multilineCommentToken } from './semanicToken/multilineCommentToken';
+import { ITokenData } from './semanicToken/ITokenData';
 
 let qlikKeywords: string[] = [];
 
@@ -272,42 +274,10 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 	const text = document.getText();
 	const lines = text.split("\n");
 
-	const tokenData: {
-		line: number;
-		startChar: number;
-		length: number;
-		tokenType: string;
-	}[] = [];
+	const tokenData: ITokenData[] = [];
 
 	// === 1. Handle multi-line comments ===
-	const multiLineCommentRegex = /\/\*[\s\S]*?\*\//g;
-	let match;
-	while ((match = multiLineCommentRegex.exec(text)) !== null) {
-		const startOffset = match.index;
-		const endOffset = match.index + match[0].length;
-
-		const startPosition = document.positionAt(startOffset);
-		const endPosition = document.positionAt(endOffset);
-
-		if (startPosition.line !== endPosition.line) {
-			for (let line = startPosition.line; line <= endPosition.line; line++) {
-				const lineStart = (line === startPosition.line) ? startPosition.character : 0;
-				const lineEnd = (line === endPosition.line)
-					? endPosition.character
-					: lines[line].length;
-				tokenData.push({
-					line,
-					startChar: lineStart,
-					length: lineEnd - lineStart,
-					tokenType: "comment",
-				});
-			}
-		}
-	}
-
-	//  tokenData.forEach(({ line, startChar, length, tokenType }) => {
-	// 	builder.push(line, startChar, length, tokenTypes.indexOf(tokenType), 0);
-	// });
+	tokenData.concat(...multilineCommentToken(text, document, lines));
 
 
 	for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
@@ -360,7 +330,7 @@ connection.onRequest("textDocument/semanticTokens/full", async (params) => {
 
 		// Match strings enclosed in single or double quotes
 		collectMatches(/(["'])(?:(?=(\\?))\2.)*?\1/g, "string");
-		
+
 		// Match strings that start with AS and end with ], allowing for any content in between
 		collectMatches(/(?<=(?:AS)\s)[\["]{1}[a-zA-Z0-9_\- ]*[\]"]{1}/gi, "string");
 
@@ -427,3 +397,4 @@ documents.listen(connection);
 
 // Listen on the connection
 connection.listen();
+
