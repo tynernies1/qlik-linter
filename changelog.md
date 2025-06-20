@@ -44,3 +44,6 @@
 
 # Version 1.0.11
 - Feature AS alingment linter setting
+
+# Version 1.0.12
+- add missing config section to package.json
