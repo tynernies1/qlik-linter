@@ -70,6 +70,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Use Linter to check if keywords are uppercase."
+				},
+				"qliklanguageServer.linter.asAlingment": {
+					"type": "boolean",
+					"default": true,
+					"description": "Use Linter to check if AS are aligned."
 				}
 			}
 		}
