@@ -29,3 +29,9 @@ LOAD
  columne2,
     columne3
 FROM [lib://some/path/to/file.qvd](qvd)
+JOIN (Test)
+LEFT JOIN (Test)
+RIGHT JOIN (Test)
+INNER JOIN (Test)
+OUTER JOIN (Test)
+WHERE column1 = 'test'

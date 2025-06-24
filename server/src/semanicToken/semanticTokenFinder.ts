@@ -68,10 +68,10 @@ export function semanticTokenFinder(
 		collectMatches(/(\$\([a-zA-Z0-9_.]*)\)/g, "variable");
 
 		// Match strings enclosed in single or double quotes
-		collectMatches(/["'](?:(?=(\\?)).)*?["']/g, "string");
+		collectMatches(/["'[](?:(?=(\\?)).)*?[\]"']/g, "string");
 
 		// Match strings that start with AS and end with ], allowing for any content in between
-		collectMatches(/(?<=(?:AS)\s)[["]{1}[a-zA-Z0-9_\-+%/\\&$# ]*[\]"]{1}/gi, "string");
+		//collectMatches(/(?<=(?:AS)\s)[["]{1}[a-zA-Z0-9_\-+%/\\&$#. ]*[\]"]{1}/gi, "string");
 
 		// Match lib: URLs
 		// Match strings that start with lib: and end with ], allowing for any content in between

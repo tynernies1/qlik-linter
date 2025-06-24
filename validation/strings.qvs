@@ -1,0 +1,8 @@
+
+
+LOAD
+  Customer,
+  'Customer Name'  AS [Static name],
+  [Customer Name] AS [Dynamic name],
+FROM [lib://$(vG.asdf)vw_f_customer.qvd](qvd)
+;
