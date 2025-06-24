@@ -4,7 +4,9 @@
 
 This Language Server works for QVS files. It has the following language features:
 - Syntax highlighting
-
+- Linter for uppercase keywords with quickfix
+- Linter for as alingment
+- bot linter function can be disabled in the config
 
 ## Build and Run
 

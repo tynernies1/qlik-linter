@@ -53,3 +53,7 @@
 - LEFT and RIGHT is only keyword in JOIN
 - match class in JOIN
 - fix as alingment with \n lineending
+
+# Version 1.0.14
+- fix JOIN class regex
+- add info to readme
