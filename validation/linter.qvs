@@ -30,6 +30,7 @@ LOAD
     columne3
 FROM [lib://some/path/to/file.qvd](qvd)
 JOIN (Test)
+JOIN Test
 LEFT JOIN (Test)
 RIGHT JOIN (Test)
 INNER JOIN (Test)

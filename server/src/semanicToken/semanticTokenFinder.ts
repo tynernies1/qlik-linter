@@ -93,9 +93,11 @@ export function semanticTokenFinder(
 		collectMatches(/(?<=(?:STORE)\s)[\w]+/gi, "class");
 		collectMatches(/(?<=(?:TABLE)\s)[\w, ]+/gi, "class");
 		collectMatches(/(?<=(?:TO)\s)[\w,]+/gi, "class");
+		collectMatches(/(?<=(?:JOIN\s\())[\w,]+/gi, "class");
 
 		// Match parameters in function calls
-		collectMatches(/(?<=\(|,)\s*[^(),'"]+?\s*(?=,|\))/g, "parameter");
+		//collectMatches(/(?<!JOIN\s)(?<=\(|,)\s*[^(),'"]+?\s*(?=,|\))/g, "parameter");
+		collectMatches(/(?<!JOIN\s\()(?<=\(|,)\s*[^(),'"]+?\s*(?=,|\))/gi, "parameter");
 
 		// Match decorators that start with trace
 		collectMatches(/(?<=(?:trace)\s)[a-z0-9 >:$(_)'.]*/gi, "decorator");
