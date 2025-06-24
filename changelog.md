@@ -47,3 +47,9 @@
 
 # Version 1.0.12
 - add missing config section to package.json
+
+# Version 1.0.13
+- adding more keywords
+- LEFT and RIGHT is only keyword in JOIN
+- match class in JOIN
+- fix as alingment with \n lineending

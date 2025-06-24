@@ -25,6 +25,12 @@ export function getAsAlignmentDiagnostics(
 	let asIndexBlock = -1;
 	let documentIndex = 0;
 
+	let lineEnding = 0; // 1 = \r\n, 0 = \n
+
+	if (new RegExp(/\r\n/).test(text)) {
+		lineEnding = 1; // \n\r
+	}
+
 	for (const line of lines) {
 
 		if (problems >= maxProblems) {
@@ -38,7 +44,7 @@ export function getAsAlignmentDiagnostics(
 		}
 
 		if (!inLoad) {
-			documentIndex += line.length + 1; // +1 for the newline character
+			documentIndex += line.length + lineEnding; // +1 for the newline character
 			continue; // Skip lines that are not in a LOAD statement
 		}
 
@@ -72,7 +78,7 @@ export function getAsAlignmentDiagnostics(
 			inLoad = false;
 		}
 
-		documentIndex += line.length + 1; // +1 for the newline character
+		documentIndex += line.length + lineEnding; // +1 for the newline character
 	}
 
 	return diagnostics;
