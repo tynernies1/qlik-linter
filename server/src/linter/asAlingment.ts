@@ -22,7 +22,7 @@ export function getAsAlignmentDiagnostics(
 	const asRegex = /[\s|"]{1}?AS\s/gi;
 
 	let inLoad = false;
-	let asIndex = -1;
+	let asIndexBlock = -1;
 	let documentIndex = 0;
 
 	for (const line of lines) {
@@ -33,7 +33,7 @@ export function getAsAlignmentDiagnostics(
 
 		const matchLoad = line.match(loadRegex);
 		if (matchLoad) {
-			console.log(`Found LOAD statement at index ${documentIndex}`);
+			// console.log(`Found LOAD statement at index ${documentIndex}`);
 			inLoad = true;
 		}
 
@@ -44,16 +44,19 @@ export function getAsAlignmentDiagnostics(
 
 		const asMatch = line.match(asRegex);
 		if (asMatch) {
-			if (asIndex === -1) {
-				asIndex = line.indexOf(asMatch[0]);
+			const currentAsIndex = line.indexOf(asMatch[0]);
+
+			// first as in block
+			if (asIndexBlock === -1) {
+				asIndexBlock = currentAsIndex;
 			}
-			else if (asIndex !== -1 && asIndex != line.indexOf(asMatch[0])) {
+			else if (asIndexBlock !== -1 && asIndexBlock != line.indexOf(asMatch[0])) {
 				// If AS is not aligned with the first AS in the LOAD statement
 				const diagnostic: Diagnostic = {
 					severity: DiagnosticSeverity.Warning,
 					range: {
-						start: textDocument.positionAt(documentIndex + line.indexOf(asMatch[0]) + 1),
-						end: textDocument.positionAt(documentIndex + line.indexOf(asMatch[0]) + 3)
+						start: textDocument.positionAt(documentIndex + currentAsIndex + 1),
+						end: textDocument.positionAt(documentIndex + currentAsIndex + 3)
 					},
 					message: `As should be alinged`,
 					source: 'Qlik Linter'
@@ -65,7 +68,7 @@ export function getAsAlignmentDiagnostics(
 
 		const matchFrom = line.match(fromResidentRegex);
 		if (matchFrom) {
-			asIndex = -1; // Reset if FROM or RESIDENT found
+			asIndexBlock = -1; // Reset if FROM or RESIDENT found
 			inLoad = false;
 		}
 

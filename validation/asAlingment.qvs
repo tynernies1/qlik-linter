@@ -1,3 +1,10 @@
+//-------- COLIBRA START VARIABLE - DO NOT DELETE NOR add anything before
+SET vL.scriptFullNameStart='\\AWWEUQLKPRPS41\d\Projects\GHH_EUCIMBI\3.Include\6.Custom\4.Application\CH\Data-Loader\SQL_DM\3L\MER_3L_TERRITORIES_CH.qvs';
+
+/*
+ asdfasdfsadfsadf
+*/
+
 ASDRITORY:
 LOAD  //distinct
     "ASD_code"                          AS  "%ASD Key"
