@@ -57,3 +57,6 @@
 # Version 1.0.14
 - fix JOIN class regex
 - add info to readme
+
+# Version 1.0.15
+- rename plugin

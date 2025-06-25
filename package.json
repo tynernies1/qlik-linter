@@ -1,6 +1,6 @@
 {
 	"name": "qlik-linter",
-	"description": "A Qlik language server",
+	"description": "A Qlik language server for Visual Studio Code. It provides syntax highlighting, code completion, and linting for Qlik Sense scripts.",
 	"author": "Mühle André",
 	"license": "GPL-3.0",
 	"version": "1.0.3",
