@@ -1,5 +1,5 @@
 {
-	"name": "vs-qlik-languageserver",
+	"name": "qlik-linter",
 	"description": "A Qlik language server",
 	"author": "Mühle André",
 	"license": "GPL-3.0",
