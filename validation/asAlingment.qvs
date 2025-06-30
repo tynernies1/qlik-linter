@@ -9,7 +9,7 @@ ASDRITORY:
 LOAD  //distinct
     "ASD_code"                          AS  "%ASD Key"
     ,ASD_code                           AS "ASDritory Code"
-    ,'Y'                               AS "ASDritory Splice Active Flag"
+    ,'Y'                                AS "ASDritory Splice Active Flag"
     ,b_Place_key                        AS %Splice
     ,asdfasdf
     ,b_Place_key                        AS %PlaceKey

@@ -37,6 +37,7 @@ import { ITokenData } from './semanicToken/ITokenData';
 import { QlikLanguageServerSettings } from './configuration/QlikLanguageServerSettings';
 import { semanticTokenFinder } from './semanicToken/semanticTokenFinder';
 import { getAsAlignmentDiagnostics } from './linter/asAlingment';
+import { getParenthesisDiagnostics } from './linter/parenthesesMatch';
 
 let qlikKeywords: string[] = [];
 
@@ -218,7 +219,9 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 		diagnostics.push(...getAsAlignmentDiagnostics(text, textDocument, settings.maxNumberOfProblems));
 	}
 	// Add other diagnostic checks here in future, if needed
-
+	if (settings.linter.parenthesesMatch) {
+		diagnostics.push(...getParenthesisDiagnostics(text, textDocument, settings.maxNumberOfProblems));
+	}
 	return diagnostics;
 }
 
