@@ -5,60 +5,53 @@ export function getParenthesisDiagnostics(
 	textDocument: TextDocument,
 	maxProblems: number
 ): Diagnostic[] {
-
 	let problems = 0;
 	const diagnostics: Diagnostic[] = [];
-
 	const lines = text.split(/\r?\n/);
 	let documentIndex = 0;
+	const parenStack: { pos: number }[] = [];
 
-	let parenStack: { char: string; pos: number }[] = [];
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-
+	for (const line of lines) {
 		for (let j = 0; j < line.length; j++) {
 			const char = line[j];
-
 			if (char === '(') {
-				parenStack.push({ char, pos: documentIndex + j });
+				parenStack.push({ pos: documentIndex + j });
 			} else if (char === ')') {
-				const last = parenStack.pop();
-				if (!last || last.char !== '(') {
-					if (problems >= maxProblems) break;
-
-					const diagnostic: Diagnostic = {
+				if (parenStack.length === 0) {
+					if (problems >= maxProblems) {
+						break;
+					}
+					diagnostics.push({
 						severity: DiagnosticSeverity.Error,
 						range: {
 							start: textDocument.positionAt(documentIndex + j),
-							end: textDocument.positionAt(documentIndex + j + 1),
+							end: textDocument.positionAt(documentIndex + j + 1)
 						},
 						message: 'Unmatched closing parenthesis `)`',
 						source: 'Qlik Linter'
-					};
-					diagnostics.push(diagnostic);
+					});
 					problems++;
+				} else {
+					parenStack.pop();
 				}
 			}
 		}
-
-		documentIndex += line.length + 1; // +1 for newline
+		documentIndex += line.length + 1; // +1 accounts for newline
 	}
 
-	// Handle any unmatched opening parentheses
 	for (const unmatched of parenStack) {
-		if (problems >= maxProblems) break;
-
-		const diagnostic: Diagnostic = {
+		if (problems >= maxProblems) {
+			break;
+		}
+		diagnostics.push({
 			severity: DiagnosticSeverity.Error,
 			range: {
 				start: textDocument.positionAt(unmatched.pos),
-				end: textDocument.positionAt(unmatched.pos + 1),
+				end: textDocument.positionAt(unmatched.pos + 1)
 			},
 			message: 'Unmatched opening parenthesis `(`',
 			source: 'Qlik Linter'
-		};
-		diagnostics.push(diagnostic);
+		});
 		problems++;
 	}
 

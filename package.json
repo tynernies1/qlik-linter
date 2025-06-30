@@ -75,6 +75,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Use Linter to check if AS are aligned."
+				},
+				"qliklanguageServer.linter.parenthesesMatch": {
+					"type": "boolean",
+					"default": true,
+					"description": "Use Linter to check if parentheses are matched."
 				}
 			}
 		}
