@@ -133,7 +133,8 @@ const defaultSettings: QlikLanguageServerSettings = {
 	linter: {
 		active: true,
 		keywordsUppercase: true,
-		asAlingment: true
+		asAlingment: true,
+		parenthesesMatch: true
 	}
 };
 let globalSettings: QlikLanguageServerSettings = defaultSettings;
