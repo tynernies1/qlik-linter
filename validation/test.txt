@@ -1,1 +1,6 @@
-trace ReloadMode: $(vReloadMode);
+Select
+  product_id 
+  name,  // ❗ missing comma between product_id and name
+  price AS PRICE,
+  quantity
+FROM data.qvd;
