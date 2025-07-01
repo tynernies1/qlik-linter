@@ -7,3 +7,4 @@ client/server
 validation/test.qvs
 validation/fullfile.qvs
 *.tsbuildinfo
+server/src/testParentheses.ts
