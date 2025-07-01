@@ -227,7 +227,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	}
 
 	if (settings.linter.commasMatch) {
-		diagnostics.push(...getParenthesisDiagnostics(text, textDocument, settings.maxNumberOfProblems));
+		diagnostics.push(...getCommaDiagnostics(text, textDocument, settings.maxNumberOfProblems));
 	}
 	return diagnostics;
 }
