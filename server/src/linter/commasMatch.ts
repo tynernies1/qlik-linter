@@ -1,6 +1,10 @@
-import { Diagnostic, DiagnosticSeverity, TextDocument } from 'vscode-languageserver';
+import {
+  Diagnostic,
+  DiagnosticSeverity,
+  TextDocument
+} from 'vscode-languageserver';
 
-// Reserved words that should not trigger comma errors
+// Keywords that indicate the end of a LOAD or SELECT block
 const RESERVED_WORDS = new Set([
   'from', 'resident', 'join', 'inner', 'left', 'right', 'outer',
   'let', 'set', 'where', 'group', 'order', 'by', 'as', 'if', 'then', 'else', 'load', 'select'
@@ -11,64 +15,85 @@ export function getCommaDiagnostics(
   textDocument: TextDocument,
   maxProblems: number
 ): Diagnostic[] {
-  let problems = 0;
   const diagnostics: Diagnostic[] = [];
-
   const lines = text.split(/\r?\n/);
-  let inLoad = false;
-  let documentIndex = 0;
 
-  for (const line of lines) {
+  let inLoadBlock = false;
+  let documentOffset = 0;
+  let problems = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim().toLowerCase();
+
     if (problems >= maxProblems) break;
 
-    // Detect start of LOAD or SELECT block
+    // Detect start of LOAD or SELECT
     if (/^\s*(load|select)\b/i.test(trimmed)) {
-      inLoad = true;
+      inLoadBlock = true;
+      documentOffset += line.length + 1;
+      continue;
     }
 
-    // Detect end of block (FROM or RESIDENT)
-    if (inLoad && /\b(from|resident)\b/i.test(trimmed)) {
-      inLoad = false;
+    // Detect end of LOAD/SELECT block
+    if (inLoadBlock && /\b(from|resident)\b/i.test(trimmed)) {
+      inLoadBlock = false;
+      documentOffset += line.length + 1;
+      continue;
     }
 
-    if (inLoad) {
-      // Remove inline comments
+    if (inLoadBlock) {
+      const isLastLoadLine =
+        i + 1 < lines.length &&
+        /\b(from|resident)\b/i.test(lines[i + 1].trim().toLowerCase());
+
       const codeOnly = line.split('//')[0].trim();
 
-      // Regex to find pairs of adjacent words with only whitespace between them
-      const noCommaPattern = /(\b\w+\b)\s+(\b\w+\b)/g;
-      let match;
-      while ((match = noCommaPattern.exec(codeOnly)) !== null) {
-        const [full, left, right] = match;
-        const startIdx = match.index;
+      if (codeOnly === '' || codeOnly === ';') {
+        documentOffset += line.length + 1;
+        continue;
+      }
 
-        const leftLower = left.toLowerCase();
-        const rightLower = right.toLowerCase();
+      const endsWithComma = /,\s*$/.test(codeOnly);
 
-        // Skip if either is reserved (e.g. 'FROM price')
-        if (RESERVED_WORDS.has(leftLower) || RESERVED_WORDS.has(rightLower)) continue;
+      // 🚨 Check for trailing comma before FROM
+      if (endsWithComma && isLastLoadLine) {
+        const commaIndex = codeOnly.lastIndexOf(',');
+        const absoluteIndex = documentOffset + commaIndex;
 
-        // Skip if left is a function call like Sum(price)
-        if (/\w+\(.*\)/.test(left)) continue;
+        diagnostics.push({
+          severity: DiagnosticSeverity.Warning,
+          range: {
+            start: textDocument.positionAt(absoluteIndex),
+            end: textDocument.positionAt(absoluteIndex + 1),
+          },
+          message: `Trailing comma before FROM or RESIDENT is not allowed.`,
+          source: 'Qlik Linter'
+        });
 
-        // Skip if context includes ' AS '
-        const context = codeOnly.substring(startIdx, startIdx + full.length).toLowerCase();
-        if (context.includes(' as ')) continue;
+        problems++;
+        if (problems >= maxProblems) break;
+        documentOffset += line.length + 1;
+        continue;
+      }
 
-        // Check if a comma follows the left token in source code
-        const charAfterLeft = codeOnly[startIdx + left.length];
-        if (charAfterLeft !== ',') {
-          const absoluteIndex = documentIndex + startIdx + left.length;
+      // 🚨 Check for missing comma if not last line
+      if (!endsWithComma && !isLastLoadLine) {
+        // Skip if line is just whitespace or suspiciously bracketed/quoted
+        const isQuoteOrBracketed =
+          /^[\s']/.test(codeOnly) || codeOnly.includes(' AS ') || codeOnly.includes('[');
+
+        if (!isQuoteOrBracketed) {
+          const absoluteIndex = documentOffset + codeOnly.length;
 
           diagnostics.push({
             severity: DiagnosticSeverity.Warning,
             range: {
-              start: textDocument.positionAt(absoluteIndex),
-              end: textDocument.positionAt(absoluteIndex + 1),
+              start: textDocument.positionAt(absoluteIndex - 1),
+              end: textDocument.positionAt(absoluteIndex),
             },
-            message: `Missing comma between '${left}' and '${right}' in LOAD or SELECT statement.`,
-            source: 'Qlik Linter'
+            message: `Missing comma at end of LOAD line.`,
+            source: 'Qlik Linter',
           });
 
           problems++;
@@ -77,7 +102,7 @@ export function getCommaDiagnostics(
       }
     }
 
-    documentIndex += line.length + 1;
+    documentOffset += line.length + 1;
   }
 
   return diagnostics;

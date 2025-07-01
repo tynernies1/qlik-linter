@@ -1,2 +1,1056 @@
-LET a = ((1 + 2;
-LET b = 3 + 4);
+Sub LoadOnOrderData
+
+    NoConcatenate
+    On_Order:
+        LOAD
+        %SKU & '|' & "E Bus Indicator" & '|' & "Climate Attribution" & '|' & "sku_stat_cde" as %ON_ORDER_KEY,
+        %SKU,
+        "E Bus Indicator" as [Ecom Indicator],
+        "Climate Attribution",
+        text([sku_stat_cde]) as [SKU Status Code],
+        sum([On Order $])      as  "On Order $",
+        sum([On Order Units])  as  "On Order Units",
+        avg([On Order Cost $]) as  "On Order Cost $",
+        sum([On Order $ N1W])      as  "On Order $ TW",
+        sum([On Order Units N1W])  as  "On Order Units TW",
+//           avg([On Order Cost $ N1W]) as  "On Order Cost $ TW",
+        sum([On Order $ N2W])      as  "On Order $ N2W",
+        sum([On Order Units N2W])  as  "On Order Units N2W",
+//           avg([On Order Cost $ N2W]) as  "On Order Cost $ N2W",
+        sum([On Order $ N4W])      as  "On Order $ N4W",
+        sum([On Order Units N4W])  as  "On Order Units N4W"
+//           ,avg([On Order Cost $ N4W]) as  "On Order Cost $ N4W"
+        FROM [$(vRepoBasePath)/prepared/orders/purchase_order_on_order.qvd]
+        (qvd)
+        Group By %SKU,"E Bus Indicator","Climate Attribution","sku_stat_cde"
+        ;
+
+    Join(Sales_Inv)
+    Load Distinct
+        [%ON_ORDER_KEY],
+        %SKU,
+        [Ecom Indicator],
+        "Climate Attribution",
+        [SKU Status Code]
+    Resident On_Order
+    ;
+
+    Drop Fields [%SKU], [Ecom Indicator],[Climate Attribution],[SKU Status Code] From On_Order;
+    
+End Sub
+
+Sub LoadMetricsTables
+
+
+Sort_Map:
+  Mapping Load * Inline [
+  Field_Value,Sort_Value
+  WTD,1
+  MTD,2
+  QTD,3
+  STD,4
+  YTD,5
+  BASE,6
+  TY,1
+  LY,2
+  Shifted,3
+  Omni,1
+  Store,2
+  Digital,3
+  ];
+
+  Year_Period_Include:
+  LOAD * Inline [
+  Year_PeriodInclude
+  TY
+  LY
+  Shifted
+  ];
+
+
+  If '$(vReloadMode)' = 'Date Range' Then
+    Time_Period_Include:
+    Load * Inline [
+    TimeFrameInclude
+    DAY
+    BASE
+    ];
+  Else
+    Time_Period_Include:
+    Load * Inline [
+    TimeFrameInclude
+    YTD
+    STD
+    QTD
+    MTD
+    WTD
+    BASE
+    ];
+  EndIf
+
+  tmp_Timeperiod:
+  Load Concat(TimeFrameInclude,'|') as All_Periods resident Time_Period_Include;
+  Let vTimeperiods = Peek('All_Periods', 0, 'tmp_Timeperiod');
+  Drop Table tmp_Timeperiod;
+
+subscription:
+LOAD
+    date_period_type,
+    item_id
+FROM [lib://$(vEnv)-repository:gcs_qlik/foundation/bi/eda-bi/master-items/master-items/apps/app_item_subscription__merchant_style_summary.csv]
+(txt, codepage is 28591, embedded labels, delimiter is ',', msq);
+
+ 
+ 
+ Metrics:
+ Load Distinct
+  	'All' as Report_Name,
+    measure_id_base & '-' & time_period & '-' & year_period as Metric_ID,
+    Trim(Replace(Replace(measure_label,time_period,''),year_period,'')) as Metric_Label,
+    measure_label_expression as Metric_Label_Expression,
+    //measure_expression,
+    Replace(measure_description,'based on Selection Criteria','BASE') as Metric_Description,
+    //year_period & ' ' & If(Len(time_period)=0, '',time_period & ' ') & Replace(Replace(measure_label,'${year_period}',year_period),'${time_period}',time_period) as Metric_Master,
+    measure_label as Metric_Master,
+    time_period as Time_Period,
+    year_period as Year_Period,
+    Channel,
+    base_measure as Metric,
+    IF(Len(Trim(attribute_sort_group))=0,'9999',attribute_sort_group)&ApplyMap('Sort_Map',time_period,100)&ApplyMap('Sort_Map',Channel,100)&ApplyMap('Sort_Map',year_period,100)&attribute_sort as Metric_Sort_Order,
+    If(Len(attribute_ignore_timeframe)=0,'N',attribute_ignore_timeframe) as NoTimeframeFlag,
+    COALESCE(attribute_sort_group,'9999') as attribute_sort_group,
+    ApplyMap('Sort_Map',time_period,100)as tp_sort,
+    ApplyMap('Sort_Map',Channel,100)as ch_sort,
+    ApplyMap('Sort_Map',year_period,100) as yp_sort,
+    attribute_sort,
+    item_id,
+    measure_tags
+ WHERE
+      Exists(TimeFrameInclude,time_period)
+      AND Exists(Year_PeriodInclude,year_period)
+      AND Exists(date_period_type,Upper(date_period))
+  ;
+  Load
+    *,
+    Upper(Left(id,Index(id,'-',2)-1)) as measure_id_base,
+    Replace(Upper(SubField(id,'-',3)),'SHIFTED','Shifted') as year_period,
+    Upper(Coalesce(If(item_component_count = 4, SubField(id,'-',4)),'BASE')) as time_period,
+    SubField(id,'-',item_component_count+1) as date_period,
+  	WildMatch(SubField(id,'-',item_component_count+1),'*total') as total_flag
+;
+Load
+	*,
+    Subfield(item_id,'|',1) as item_type,
+    Subfield(item_id,'|',2) as id,
+    SubstringCount(item_id,'-') as item_component_count
+;
+LOAD
+    item_id,
+    measure_id,
+    measure_label,
+    base_measure,
+    "measure",
+    measure_label_expression,
+    measure_expression,
+    measure_format,
+    measure_description,
+    measure_tags,
+    measure_active,
+    validation_assertion,
+    validation_documentation_link,
+    attribute_sort_group,
+    attribute_sort,
+    attribute_ignore_timeframe,
+    If(WildMatch(measure_tags,'*Digital*'),'Digital',If(WildMatch(measure_label,'*Store*'),'Store','Omni')) as Channel
+FROM 
+	[lib://$(vEnv)-repository:gcs_qlik/foundation/bi/eda-bi/master-items/master-items/objects/master_item__measures.csv](txt, codepage is 28591, embedded labels, delimiter is ',', msq)
+WHERE 
+  	Exists(item_id)
+    AND measure_active = 'Y'
+  ;
+  
+
+  Concatenate(Metrics)
+  Load
+  	*,
+    Replace(Metric_ID,original_tp,Time_Period) as Metric_ID_NTF,
+    'Y' as NTF_Concat
+  Where Not Exists(Metric_ID, Replace(Metric_ID,original_tp,Time_Period));
+  LOAD Distinct
+    Report_Name,Metric_ID,Metric_Label_Expression,Metric_Label,Metric_Description,Metric_Master,Year_Period,Channel,Metric_Sort_Order,Metric,NoTimeframeFlag
+    ,SubField('$(vTimeperiods)','|') as Time_Period,
+    Time_Period as original_tp
+  Resident Metrics
+  WHERE 
+  	NoTimeframeFlag = 'Y'
+;
+  
+
+ Dimensions:
+  LOAD
+      'All' as Report_Name,
+      dimension_id as Dimension_ID,
+      dimension as [Dimension],
+      If(Left(dimension_field,1)='=',dimension_field,'['&dimension_field&']') as Dimension_Expression,
+      attribute_sort as Dimension_Sort
+  	FROM 
+  		[lib://$(vEnv)-repository:gcs_qlik/foundation/bi/eda-bi/master-items/master-items/objects/master_item__dimensions.csv](txt, codepage is 28591, embedded labels, delimiter is ',', msq)
+  	WHERE 
+  		Exists(item_id)
+      	AND dimension_active = 'Y';
+
+  Drop tables Year_Period_Include, Time_Period_Include;
+
+  Concatenate(Metrics)
+  Load Distinct 'Default' as Report_Name,Metric,Time_Period,Year_Period,Channel,Metric_Sort_Order
+  Resident Metrics
+  WHERE Match(Metric,'Demand Sales $','Demand Sales Units','Demand Sales AUR $', 'Demand Profit $', 'Demand ST %', 'EOH $', 'On Order $', 'Alloc In Stock %', 'Replen In Stock %')
+  AND Match(Time_Period,'WTD','STD')
+  AND Match(Year_Period,'TY');
+
+  Concatenate(Dimensions)
+  Load Distinct 'Default' as Report_Name,Dimension,Dimension_Expression,Dimension_Sort
+  Resident Dimensions
+  WHERE Match("Dimension",'Department','Major Class','Subclass','Group Code','Parent Product ID','Vendor Style','Vendor Color','Corp Unit Cost','Corp Unit Retail','Corp First Receipt Date','Demand Sales $ Rank');
+
+  Concatenate(Metrics)
+  Load Distinct 'Best Sellers Style' as Report_Name,Metric,Time_Period,Year_Period,Channel,Metric_Sort_Order
+  Resident Metrics
+  WHERE Match(Metric,'Demand Sales $','Demand Sales Units','Demand Sales AUR $', 'Demand Profit $', 'Demand ST %', 'EOH $', 'On Order $', 'Alloc In Stock %', 'Replen In Stock %','Demand Sales $ Rank')
+  AND Match(Time_Period,'WTD','STD')
+  AND Match(Year_Period,'TY');
+
+  Concatenate(Dimensions)
+  Report_Dimensions:
+  Load Distinct 'Best Sellers Style' as Report_Name,Dimension,Dimension_Expression,Dimension_Sort
+  Resident Dimensions
+  WHERE Match("Dimension",'Department','Major Class','Subclass','Vendor Style');
+
+  Concatenate(Metrics)
+  Load Distinct 'Best Sellers Style Color' as Report_Name,Metric,Time_Period,Year_Period,Channel,Metric_Sort_Order
+  Resident Metrics
+  WHERE Match(Metric,'Demand Sales $','Demand Sales Units','Demand Sales AUR $', 'Demand Profit $', 'Demand ST %', 'EOH $', 'On Order $', 'Alloc In Stock %', 'Replen In Stock %','Demand Sales $ Rank')
+  AND Match(Time_Period,'WTD','STD')
+  AND Match(Year_Period,'TY');
+
+  Concatenate(Dimensions)
+  Load Distinct 'Best Sellers Style Color' as Report_Name,Dimension,Dimension_Expression,Dimension_Sort
+  Resident Dimensions
+  WHERE Match("Dimension",'Department','Major Class','Subclass','Vendor Style','Vendor Color');
+
+  Reports: Load Distinct Report_Name Resident Metrics;
+
+End Sub
+
+
+IF '$(vReloadMode)'='Historical' THEN
+
+	Trace ---------- ReloadMode: $(vReloadMode) - $(vFY)-W$(vFW);
+
+    IF NOT IsNull(FileTime('$(vRepoBasePath)/prepared/data_models/style_summary/$(vFY)-w$(vFW)/sales_inv.qvd')) AND WildMatch('$(vCacheRebuild)','Y')=0 Then
+
+        Trace ---------- QVDs exist. Loading from cache;
+
+        Product:
+        Load
+            *
+        FROM
+            [$(vRepoBasePath)/prepared/data_models/style_summary/$(vFY)-w$(vFW)/product.qvd](qvd)
+        Where 
+            Exists([$(vODAGHistoricalFilter)]);
+
+        Sales_Inv:
+        Load
+            *
+        FROM
+            [$(vRepoBasePath)/prepared/data_models/style_summary/$(vFY)-w$(vFW)/sales_inv.qvd](qvd)
+        Where 
+            Exists(%SKU);
+
+
+        in_stock:
+        Load
+            *
+        FROM
+            [$(vRepoBasePath)/prepared/data_models/style_summary/$(vFY)-w$(vFW)/in_stock.qvd](qvd)
+        Where 
+            Exists(%ON_ORDER_KEY);
+
+
+
+        for each vQVD in FileList('$(vRepoBasePath)/prepared/data_models/style_summary/$(vFY)-w$(vFW)/')
+
+            Let vTableName = QVDTableName('$(vQVD)');
+
+            IF WildMatch('$(vTableName)','Product','Sales_Inv','in_stock') = 0 Then
+
+                [$(vTableName)]:
+                Load 
+                    *
+                From
+                    [$(vQVD)](qvd);
+
+            End If;
+
+            vTableName=;
+
+        next vQVD
+
+        Call LoadOnOrderData;
+
+        exit script;
+
+    EndIf;
+
+
+ELSE
+
+    FiscalYearWeek:
+    LOAD Distinct
+        "Fiscal Year",
+        "Fiscal Week"
+    FROM
+         [$(vRepoBasePath)/prepared/calendar/fiscalcalendar.qvd](qvd)
+    Where 
+        floor(Start_WTD_TY) = floor(Weekstart(TODAY()-7));
+
+
+    LET vFY                   = peek('Fiscal Year',0,'FiscalYearWeek');
+    LET vFW                   = peek('Fiscal Week',0,'FiscalYearWeek');
+
+    Drop Table FiscalYearWeek;
+
+    Trace ---------- ReloadMode: $(vReloadMode) - $(vFY)-W$(vFW);
+
+
+ENDIF;
+
+
+// Regular / Clearance Attribution
+// This table is used to build out Regular or Clearance SKU Product Filters built off of the SKU Status Code from the Sales & Inventory weekly QVDs
+SKUStatus:
+Load text([SKU Status Code]) as [SKU Status Code], [SKU Status], [SKU Status Description];
+Load * INLINE [
+SKU Status Code,SKU Status,SKU Status Description
+0,Regular,UNKNOWN
+00,Regular,UNKNOWN
+10,Regular,UNKNOWN
+20,Regular,ACTIVE
+40,Regular,PROMTIONAL
+90,Regular,DISCNTNUED
+25,Regular,MIXED
+30,Clearance,CLEARANCE
+](delimiter is ',');
+
+
+
+//List timeframes to pull in to the application
+TimeFrameList:
+Load * Inline [
+TimeFrameInclude
+YTD
+STD
+QTD
+MTD
+WTD
+];
+
+//List timeframes to pull in to the application for Inventory
+InvTimeFrameList:
+Load * Inline [
+InvTimeFrameInclude
+WTD
+];
+
+
+//Sales & Inventory
+    Sales_Inv: 
+    LOAD
+        Date("As Of Date")&'|'&"Year Period"&'|'&Timeperiod&'|'&[Calendar Type] as %DATE_WEEKCOUNTERS_KEY,
+        "As Of Date" as [As of Date],
+        "Year Period" as [Year Period],
+        "Calendar Type" as [Calendar],
+        "Timeperiod" as [Timeframe],
+        "%SKU" as [%SKU],
+        "%SKU_STATUS" as "SKU Status Code",
+        "Ecom Indicator" as [Ecom Indicator],
+        "Digital Demand Indicator",
+        "Digital Verified Indicator",
+        "Climate Attribution" as [Climate Attribution],
+        %SKU & '|' & [Ecom Indicator] & '|' & "Climate Attribution" & '|' & "%SKU_STATUS" as %ON_ORDER_KEY,
+        "Demand Sales $" as "Demand Sales $",
+        "Demand Sales Units" as "Demand Sales Units",
+        "Verified Sales $" as "Verified Sales $",
+        "Verified Sales Units $" as "Verified Sales Units",
+        "Return $" as "Return $",
+        "Return Units" as "Return Units",
+        "Gross Sales $" as  "Gross Sales $",
+        "Demand Profit $"
+        //"Verified Profit $"
+    FROM [$(vRepoBasePath)/prepared/sales/sales_sku_summary_$(vFY)-w$(vFW).qvd]
+    (qvd)
+    WHERE Exists(TimeFrameInclude,"Timeperiod")
+   ;
+
+
+    Join(Sales_Inv) 
+    LOAD
+        %SKU & '|' & [Ecom Indicator] & '|' & "Climate Attribution" & '|' & "%SKU_STATUS" as %ON_ORDER_KEY,
+    	Date("As Of Date")&'|'&"Year Period"&'|'&Timeperiod&'|'&[Calendar Type] as %DATE_WEEKCOUNTERS_KEY,
+        "As Of Date" as [As of Date],
+        "Year Period" as [Year Period],
+        "Calendar Type" as [Calendar],
+        "Timeperiod" as [Timeframe],
+        "%SKU" as [%SKU],
+        "%SKU_STATUS" as "SKU Status Code",
+        "Ecom Indicator",
+        "Digital Demand Indicator",
+        "Digital Verified Indicator",
+        "Climate Attribution",
+        "Direct Ship Demand Sales Units",
+        "Direct Ship Demand Sales $"
+    FROM 
+    	[$(vRepoBasePath)/prepared/sales/sales_dsv_summary_$(vFY)-w$(vFW).qvd](qvd)
+    WHERE 
+    	Exists(TimeFrameInclude,"Timeperiod");
+
+
+
+Inventory_tmp:
+LOAD
+        "As Of Date" as [As of Date],
+        "Year Period" as [Year Period],
+        "Calendar Type" as [Calendar],
+        "Timeperiod" as [Timeframe],
+        "%SKU" as [%SKU],
+        "%SKU_STATUS" as "SKU Status Code",
+        "E Bus Indicator" as [Ecom Indicator],
+        "E Bus Indicator" as "Digital Demand Indicator",
+        "E Bus Indicator" as "Digital Verified Indicator",
+        "Climate Attribution",
+//        "BOH Quantity" as "BOH Quantity",
+//        "BOH Retail $" as "BOH Retail Amount",
+        [EOH Cost $] AS [EOH Cost Amount],
+        [EOH Quantity] AS [EOH Quantity],
+        [EOH Retail $] AS [EOH Retail Amount],
+        "Door Count" as "Door Count SKU"
+    FROM [$(vRepoBasePath)/prepared/inventory/inventory_sku_summary_$(vFY)-w$(vFW).qvd]
+    (qvd)
+    WHERE Exists(InvTimeFrameInclude,"Timeperiod")
+    ;
+
+	Join(Inventory_tmp)
+    LOAD
+        "As Of Date" as [As of Date],
+        "Year Period" as [Year Period],
+        "Calendar Type" as [Calendar],
+        "Timeperiod" as [Timeframe],
+        "%SKU" as [%SKU],
+        "%SKU_STATUS" as "SKU Status Code",
+        "E Bus Indicator" as [Ecom Indicator],
+        "E Bus Indicator" as "Digital Demand Indicator",
+        "E Bus Indicator" as "Digital Verified Indicator",
+        "Climate Attribution",
+//        "BOH Quantity" as "BOH Quantity",
+//        "BOH Retail $" as "BOH Retail Amount",
+        "Receipt Retail $" as "Receipt $",
+        "Receipt Units" as "Receipt Units",
+        "Receipt Cost $" as "Receipt Cost $",
+        "Receipt First Cost $" as "Receipt First Cost $"
+    FROM [$(vRepoBasePath)/prepared/inventory/inventory_sku_summary_$(vFY)-w$(vFW).qvd]
+    (qvd)
+    WHERE Exists(TimeFrameInclude,"Timeperiod") and Exists(%SKU);
+
+Join(Sales_Inv)
+Load 
+        Date("As of Date")&'|'&"Year Period"&'|'&Timeframe&'|'&Calendar as %DATE_WEEKCOUNTERS_KEY,
+	 	[As of Date],
+        [Year Period],
+        [Calendar],
+        [Timeframe],
+        [%SKU],
+        "SKU Status Code",
+        [Ecom Indicator],
+        "Digital Demand Indicator",
+        "Digital Verified Indicator",
+        "Climate Attribution",
+        %SKU & '|' & "Ecom Indicator" & '|' & "Climate Attribution" & '|' & "SKU Status Code" as %ON_ORDER_KEY,
+        [EOH Cost Amount],
+        [EOH Quantity],
+        [EOH Retail Amount],
+        "Receipt $",
+        "Receipt Units",
+        "Receipt Cost $",
+        "Receipt First Cost $",
+        "Door Count SKU"
+
+Resident Inventory_tmp;
+
+drop table Inventory_tmp;
+
+    Join(Sales_Inv) 
+    LOAD
+        Date("As Of Date")&'|'&"Year Period"&'|'&Timeperiod&'|'&[Calendar Type] as %DATE_WEEKCOUNTERS_KEY,
+        "As Of Date" as [As of Date],
+        "Year Period" as [Year Period],
+        "Calendar Type" as [Calendar],
+        "Timeperiod" as [Timeframe],
+        "%SKU" as [%SKU],
+        "%SKU_STATUS" as "SKU Status Code",
+        "Ecom Indicator" as [Ecom Indicator],
+        [Ecom Indicator] as "Digital Demand Indicator",
+        [Ecom Indicator] as "Digital Verified Indicator",
+        "Climate Attribution" as [Climate Attribution],
+        %SKU & '|' & [Ecom Indicator] & '|' & "Climate Attribution" & '|' & "%SKU_STATUS" as %ON_ORDER_KEY,
+        "Transaction Discount $",
+        "Promo Discount Units",
+        "Promo Discount $"
+    FROM 
+        [$(vRepoBasePath)/prepared/sales/pricing_sku_summary_$(vFY)-w$(vFW).qvd](qvd)
+    WHERE 
+        Exists(TimeFrameInclude,"Timeperiod");
+        
+//--- aggregated inventory for avg inventory calc
+    Join(Sales_Inv)   
+    LOAD
+        Date(as_of_dte)&'|'&"Year Period"&'|'&Timeframe&'|'&Calendar as %DATE_WEEKCOUNTERS_KEY,
+        as_of_dte as [As of Date],
+        Timeframe,
+        "Year Period",
+        Calendar,
+        %SKU,
+        %SKU_STATUS as "SKU Status Code",
+        %SKU & '|' &"E Bus Indicator" & '|' & "Climate Attribution" & '|' & "%SKU_STATUS" as %ON_ORDER_KEY,
+        "E Bus Indicator" as [Ecom Indicator],
+        "E Bus Indicator" as "Digital Demand Indicator",
+        "E Bus Indicator" as "Digital Verified Indicator",
+        "Climate Attribution",
+
+        "EOH Quantity AGGR",
+        "EOH Retail AGGR",
+        "EOH Cost AGGR"
+    FROM [$(vRepoBasePath)/prepared/inventory/inventory_sku_daily_average_$(vFY)-w$(vFW).qvd]
+    (qvd)
+        WHERE Exists(TimeFrameInclude,"Timeframe");
+
+    Drop Tables [InvTimeFrameList],[TimeFrameList];
+
+
+    Call LoadOnOrderData;
+
+
+    in_stock:
+    Load
+        [%SKU]&'|'& [E Bus Indicator]&'||'& %SKU_STATUS as %ON_ORDER_KEY,
+        "As Of Date" as [As of Date],
+        "Year Period",
+        "Calendar Type" as [Calendar],
+        Timeperiod as [Timeframe],
+        %SKU,
+        %SKU_STATUS as [SKU Status Code],
+        [E Bus Indicator] as [Ecom Indicator],
+        [Replen Days In Stock],
+        [Replen Days OOS],
+        [Alloc Days OOS],
+        [Alloc Days In Stock],
+        [0-30 Alloc Days OOS],
+        [0-30 Alloc Days In Stock]
+    From [$(vRepoBasePath)/prepared/inventory/inventory_sku_in_stock_$(vFY)-w$(vFW).qvd](qvd)
+    ;
+
+
+    Join(Sales_Inv)
+    Load Distinct
+        %ON_ORDER_KEY,
+        "As of Date",
+        "Year Period",
+        "Calendar",
+        Timeframe,
+        %SKU,
+        [SKU Status Code],
+        [Ecom Indicator]
+    Resident
+        in_stock;
+
+
+    Drop Fields 
+        "As of Date",
+        "Year Period",
+        "Calendar",
+        Timeframe,
+        %SKU,
+        [SKU Status Code],
+        [Ecom Indicator]
+    From in_stock;
+    
+    Calendar_Counters: //load qvd with counters needed for inventory daily average and avg wkly ST%
+    Left join(Sales_Inv)
+    LOAD
+    Date([%DATE])&'|'&[Year_Period]&'|'&Timeframe&'|'&Calendar as %DATE_WEEKCOUNTERS_KEY,
+        Weeks_Counter,
+        Days_Counter
+    FROM [$(vRepoBasePath)/prepared/calendar/fiscalcalendar_counters.qvd] (qvd);
+
+    Product: //load the QVD matching the value in the vSkuStatus variable for the current iteration
+    LOAD
+        %SKU,
+        "Attribute 1 Description",
+        "Attribute 2 Description",
+        //"Brand ID",
+        "Brand Name",
+        //"Brand Abbreviation",
+        //"Brand Type Code",
+        "Brand Type Description",
+        //"Buying Office Description",
+        //"Buyer Number",
+        //"Unit First Cost Amount",
+        "Corp Unit Cost Amount",
+        "Corp Unit Retail Amount",
+        "Department Number",
+        //"Department Description",
+        "Category Number",
+        //"Category Description",
+        "Corp First Receipt Date",
+        "Corp First Sale Date",
+        "Corp Last Receipt Date",
+        "Corp Last Sale Date",
+        "Corp First Receipt Date Stores",
+        "Corp Last Receipt Date Stores",
+        "Corp First Receipt Date Digital",
+        "Corp Last Receipt Date Digital",
+        "Corp First Sale Date Stores",
+        "Corp Last Sale Date Stores",
+		"Corp First Sale Date Digital",
+		"Corp Last Sale Date Digital",
+        "Direct Ship Indicator",
+        "GM Number",
+        //"GM Description",
+        "Group Code",
+        "Inner Pack Quantity",
+        "Outer Pack Quantity",
+        "Key Classification Description",
+        //"Major Class Number",
+        //"Major Class Description",
+        "Replenishable Indicator",
+        //"Sale Indicator",
+        "SKU Number",
+        "SKU Description",
+        //"Subclass Number",
+        "Subclass Description",
+        //"Business Group Number",
+        //"Business Group Description",
+        "Web Exclusive Indicator",
+        "Seasonality Description",
+        //"Style ID",
+        "Style Description",
+        "Style Trend Description",
+        "Style Primary Trend Description",
+        "Style Secondary Trend Description",
+        //"Style Create Date",
+        "Vendor Color",
+        "Vendor Style Number",
+       //"Vendor Style Description",
+        //"Vendor Style ID",
+        //"Style Major Category Description",
+        "Parent Product ID",
+       "Product Web Display Name",
+        //"SKU Return Info",
+      	//Feature,
+        Pattern,
+        Brand,
+        Buyer,
+        Department,
+        Category,
+        GM,
+        "Major Class",
+        Subclass,
+        Style,
+       "Vendor Style",
+        "Business Group",
+        "Finance Group",
+        "NRF Color",
+        "NRF Color Family",
+        "Display Color",
+        [Product Image URL],
+        "SKU Size Range",
+        "Extended Size Code",
+        "Discount Eligibility Indicator",
+        Silhouette,
+        "Formality Occasion",
+        [Fashion Pyramid Description],
+        "Vendor Number",
+        "Vendor ID",
+        "Vendor Name",
+        "Vendor UPC Number",
+        //"Executive Business Group Number",
+        //"Executive Business Group Name",
+        [Executive Business Group],
+        "Merch Category",
+        [Vendor Style Color] as [%Vendor_Style],
+        [Vendor Style Color] as [%Vendor_Style_Zero_Selling], //? same as above but different key for clarity
+        //"Web ID",
+        //"Display Color",
+        "P1 - Department",
+        "P2 - Category",
+        "P3 - Product",
+        "Great Value Indicator",
+        "Material",
+        "Size Code",
+        "Size Description",
+//      "Strategic Price Group Number",
+//      "Strategic Price Group Name",
+        "Strategic Price Group",
+        "Strategic Price Elasticity",
+        "Marketplace Shop Name",
+        "Last Saleable Date",
+        "Price Tier Description"
+    FROM [$(vRepoBasePath)/prepared/products/product.qvd]
+    (qvd)
+    where exists(%SKU)
+    ;
+	
+    tmp: 
+    Load 
+    	Max([As of Date]) as max_date 
+    Resident Sales_Inv;
+    
+    Let vDate = Date(Peek('max_date',0,'tmp'),'YYYY-MM-DD');
+    
+    Drop Table tmp;
+
+    LIB CONNECT TO '$(vEnv)-repository:bq_qlik';
+    
+    NoConcatenate
+    Door_Counts_Vendor:
+    Load Distinct
+        vnd_styl_nbr & ' - ' & vnd_styl_desc & ' - ' & cstm_clor_desc as [%Vendor_Style],
+        door_count as [Door Count Style Color]
+    ;
+
+    SELECT
+        d.as_of_dte as as_of_dte,
+        d.tm_prd as tm_prd,
+        d.yr_prd as yr_prd,
+        d.cal_typ as cal_typ, 
+        sku.cstm_clor_desc as cstm_clor_desc,
+        sku.vnd_styl_nbr as vnd_styl_nbr,
+        sku.vnd_styl_desc as vnd_styl_desc,
+        COUNT(DISTINCT i.loc_nbr) as door_count
+    FROM
+        `kohls-bda-prd.dp_merchandising.bqth_mdsg_sku_str_oh_fct` i
+        INNER JOIN (
+        SELECT
+        DISTINCT
+        c.str_nbr,
+        c.tm_dim_ky_dte
+        FROM
+        `kohls-bda-prd.dp_location.bqth_lgs_str_chartc_dim` c
+        WHERE
+        (c.b_m_str_ind = 1
+            AND c.loc_opn_ind = 'Y'
+            AND c.tm_dim_ky_dte BETWEEN DATE_SUB('$(vDate)', INTERVAL 7 day) AND '$(vDate)')) s
+    ON
+        (i.loc_nbr = s.str_nbr
+        AND i.tm_dim_ky_dte=s.tm_dim_ky_dte)
+    JOIN `kohls-bda-prd.dp_merchandising.bqt_mdsg_prd_sku` sku on sku.sku_nbr = i.sku_nbr
+    INNER JOIN (
+        SELECT
+        as_of_dte,
+        tm_dim_ky_dte,
+        yr_prd,
+        tm_prd,
+        cal_typ
+        FROM
+        kohls-bda-prd.dp_location.bqv_lgs_as_of_dte_cal
+        WHERE
+        as_of_dte='$(vDate)'
+        AND tm_prd='WTD'
+        and yr_prd='TY') d
+    ON
+        (i.tm_dim_ky_dte=d.tm_dim_ky_dte)
+        WHERE
+        (eoh_qty>0 
+        AND i.tm_dim_ky_dte BETWEEN DATE_SUB('$(vDate)', INTERVAL 7 day) AND '$(vDate)')
+        GROUP BY 1, 2, 3, 4, 5, 6, 7;
+
+
+    // SeasonalKeyClass:
+    // LOAD
+    //     "Key Classification Description",
+    //     "Seasonal Key Class Group"
+    // FROM [lib://Merchandising - Shared:DataFiles/Merchant_Reporting_Custom_Groupings.xlsx]
+    // (ooxml, embedded labels, table is Seasonal_Key_Class);
+    
+    //Seasonal Key Class Load
+
+    LIB CONNECT TO '$(vEnv)-repository:bq_qlik';
+    SeasonalKeyClass:
+    Load
+        seas_ky_cls_grp as "Seasonal Key Class Group"
+        ,ky_clsn_desc as "Key Classification Description"
+    ;
+    SELECT seas_ky_cls_grp, ky_clsn_desc FROM `kohls-bda-analytics-prd.analytics.bqt_seas_ky_cls_grp`;
+
+    Seasonality:
+    Load * Inline [
+    Seasonality Description,Seasonality
+    FASHION-FALL,FALL
+    FASHION-SPRING,SPRING
+    SEASONAL BASIC-FALL,FALL
+    SEASONAL BASIC-SPRNG,SPRING
+    YEAR-ROUND BASIC,YEAR-ROUND
+    YEAR-ROUND FASHION,YEAR-ROUND
+    ];
+
+    Marketplace_Filter:
+    Load distinct
+        [Department Number],
+        'Y' as include_mktplc_flg
+    Resident Product;
+
+    Concatenate(Marketplace_Filter)
+    Load Distinct
+        [Department Number],
+        'N' as include_mktplc_flg
+    Resident Marketplace_Filter
+    WHERE [Department Number]<>985;
+    
+    Call LoadMetricsTables;
+
+// ******************************************************
+// **	Zero Selling Report Data
+// ******************************************************
+
+    //? Get most recent Saturday to determine LW (assumes 'Set FirstWeekDay = 6;')
+    Let vLocalDateTime_zs 	= ConvertToLocalTime(Now(),'Central Time (US & Canada)',0);
+    Let vAsOfDate_zs 		= Date(WeekStart(vLocalDateTime_zs-1)-1,'YYYY-MM-DD');
+
+    //? Get data needed for the zero selling sheet
+    ZeroSellingGiv:
+    Load
+        vnd_styl & ' - ' & cstm_clor_desc	as [%Vendor_Style_Zero_Selling]
+        ,str_gp_nm							as [Climate]
+        ,str_counts_as						as [Store Counts As]
+        ,str_count_giv				        as [Store Count - GIV]
+        ,str_count_sell_stores              as [Store Count - Selling Stores WTD]
+        ,str_count_intended                 as [Store Count - Intended]
+        ,eoh_qty_sell_stores                as [EOH Qty at Selling Stores]
+        ,EOD_LOC_QTY                        as [Qty at Location]
+        ,EOD_NONOPC_IN_TRANSIT_QTY			as [Qty in Transit]
+        ,EOD_IN_PROC_QTY					as [Qty in DC];
+    SQL
+    //? Open store locations & their climate
+    WITH loc_bm AS 
+    (
+        SELECT 
+             CAST(loc_nbr AS STRING) AS LOC_ID
+            ,loc_nbr
+            ,str_gp_nm
+        FROM `kohls-bda-analytics-prd.analytics.bqv_loc_semantic`
+        WHERE b_m_str_ind = 1
+            AND loc_opn_ind = 'Y'
+    ),
+    //? List of dates in WTD
+    wtd_dtes AS
+    (
+        SELECT 
+            tm_dim_ky_dte
+        FROM `kohls-bda-prd.dp_location.bqv_lgs_as_of_dte_cal`
+        WHERE as_of_dte = '$(vAsOfDate_zs)'
+            AND yr_prd 	= 'TY'
+            AND cal_typ = 'Fiscal'
+            AND tm_prd 	= 'WTD'
+    ),
+    //? SKUs & Stores that had sales WTD
+    sls_units AS 
+    (
+        SELECT
+             sku_nbr													    AS sku_nbr
+            ,str_nbr														AS loc_nbr
+            ,SUM(ffld_ord_lne_qty)											AS ver_sls_units_wtd
+        FROM `kohls-bda-prd.dp_sales.bqt_sls_flw`
+        WHERE trn_sls_dte IN (SELECT * FROM wtd_dtes)
+            AND itm_stat_cde NOT IN ('25','30') 
+            AND expted_sls_ind
+            AND salbl_ind
+        GROUP BY ALL
+    ),
+    //? SKUs & Stores that had EOH at EOW
+    eoh_data AS 
+    (
+        SELECT
+             sku_nbr													    AS sku_nbr
+            ,loc_nbr														AS loc_nbr
+            ,1                                                              AS eoh_ind
+            ,SUM(eoh_qty)													AS eoh_qty
+        FROM `kohls-bda-prd.dp_merchandising.bqth_mdsg_sku_str_oh_fct`
+        WHERE tm_dim_ky_dte = '$(vAsOfDate_zs)'
+            AND sku_stat_cde NOT IN ('25','30')
+            AND eoh_qty > 0
+        GROUP BY ALL
+    ),
+    //? SKUs & Stores that have receipted
+    sku_str AS
+    (
+        SELECT DISTINCT
+             sku_nbr														AS sku_nbr
+            ,loc_nbr														AS loc_nbr
+            ,1                                                              AS rcv_dte_ind
+        FROM `kohls-bda-prd.dp_merchandising.bqth_mdsg_sku_str_oh_fct`
+        WHERE tm_dim_ky_dte = '$(vAsOfDate_zs)'
+            AND sku_stat_cde NOT IN ('25','30')
+            AND frst_rcvd_dte IS NOT NULL
+    ),
+    //? SKUs & Stores that have on order at EOW
+    on_ord AS
+    (
+        SELECT DISTINCT
+             sku_nbr														AS sku_nbr
+            ,loc_nbr														AS loc_nbr
+            ,1                                                              AS on_ord_ind
+        FROM `kohls-bda-prd.dp_logistics.bqv_lgs_po_on_ord_fct`
+        WHERE sku_stat_cde NOT IN ('25','30')
+            AND onord_unt_qty > 0
+            AND adj_in_dc_dte BETWEEN 
+                DATE_ADD('$(vAsOfDate_zs)',INTERVAL -6 DAY) AND 
+                DATE_ADD('$(vAsOfDate_zs)',INTERVAL 729 DAY)
+    ),
+    //? Inventory data from GIV combined with above values/indicators
+    giv_data AS
+    (
+        SELECT
+             vnd_styl															                        AS vnd_styl
+            ,cstm_clor_desc														                        AS cstm_clor_desc
+            ,loc_nbr														                            AS loc_nbr
+            ,str_gp_nm															                        AS str_gp_nm
+            ,IF(MAX(EOD_LOC_QTY) > 0, 'In Store', NULL)                                                 AS in_store_ind
+            ,IF(MAX(EOD_NONOPC_IN_TRANSIT_QTY) > 0, 'In Transit', NULL)                                 AS in_transit_ind
+            ,IF(MAX(EOD_IN_PROC_QTY)  >0, 'In DC', NULL)                                                AS in_dc_ind
+            ,MAX(on_ord_ind)                                                                            AS on_ord_ind
+            ,MAX(rcv_dte_ind)                                                                           AS rcv_dte_ind
+            ,MAX(eoh_ind)                                                                               AS eoh_ind
+            ,SUM(ver_sls_units_wtd)                                                                     AS ver_sls_units_wtd
+            ,SUM(eoh_qty)                                                                               AS eoh_qty
+            ,SUM(CASE WHEN EOD_LOC_QTY < 0 THEN 0 ELSE EOD_LOC_QTY END)                                 AS EOD_LOC_QTY
+            ,SUM(CASE WHEN EOD_NONOPC_IN_TRANSIT_QTY < 0 THEN 0 ELSE EOD_NONOPC_IN_TRANSIT_QTY END)     AS EOD_NONOPC_IN_TRANSIT_QTY
+            ,SUM(CASE WHEN EOD_IN_PROC_QTY < 0 THEN 0 ELSE EOD_IN_PROC_QTY END)							AS EOD_IN_PROC_QTY
+        FROM `kohls-bda-prd.dp_merchandising.bqth_mdsg_str_inv_pric`
+            INNER JOIN loc_bm USING (LOC_ID)
+            INNER JOIN `kohls-bda-analytics-prd.analytics.bqv_prd_sku_semantic`  USING (SKU_NBR)
+            LEFT JOIN sls_units USING (SKU_NBR, loc_nbr)
+            LEFT JOIN eoh_data USING (SKU_NBR, loc_nbr)
+            LEFT JOIN sku_str USING (SKU_NBR, loc_nbr)
+            LEFT JOIN on_ord USING (SKU_NBR, loc_nbr)
+        WHERE TM_DIM_KY_DTE = '$(vAsOfDate_zs)'
+            AND (EOD_SKU_STAT_CDE NOT IN ('25','30') OR BOD_SKU_STAT_CDE NOT IN ('25','30'))
+        GROUP BY ALL
+    )
+    //? Final table
+    SELECT
+         vnd_styl                                                                                   AS vnd_styl
+        ,cstm_clor_desc                                                                             AS cstm_clor_desc
+        ,str_gp_nm                                                                                  AS str_gp_nm
+        ,COALESCE(in_store_ind, in_transit_ind, in_transit_ind,'No Units')                          AS str_counts_as
+        ,COUNT(DISTINCT loc_nbr)                                                                    AS str_count_giv
+        ,SUM(CASE WHEN ver_sls_units_wtd > 0 AND rcv_dte_ind = 1 THEN 1 ELSE 0 END) 				AS str_count_sell_stores
+        ,SUM(CASE WHEN eoh_ind = 1 OR on_ord_ind = 1 THEN 1 ELSE 0 END)                             AS str_count_intended
+        ,SUM(CASE WHEN ver_sls_units_wtd > 0 THEN eoh_qty ELSE 0 END)								AS eoh_qty_sell_stores
+        ,SUM(EOD_LOC_QTY)                                                                           AS EOD_LOC_QTY
+        ,SUM(EOD_NONOPC_IN_TRANSIT_QTY)                                                             AS EOD_NONOPC_IN_TRANSIT_QTY
+        ,SUM(EOD_IN_PROC_QTY)                                                                       AS EOD_IN_PROC_QTY
+    FROM giv_data
+    GROUP BY ALL;
+
+    //? Clear variables used for zero selling
+    Set vLocalDateTime_zs=;
+    Set vAsOfDate_zs=;
+
+
+// ******************************************************
+// **	Size Selling Report Data
+// ******************************************************
+
+LIB CONNECT TO '$(vEnv)-repository:bq_qlik';
+
+Left Join(Product)
+LOAD [Size_Desc] as [Size Group], 
+	Category as [Size Category],
+	[Size_Code] as [Size Code],
+    [Size_Code] & ' - ' & [Size_Desc] as "Size Name",
+    Size_Grp_Sort  as [Size Grp Sort];
+
+SELECT distinct
+    Size_Desc,
+    Size_Code,
+    Category,
+    Size_Grp_Sort
+FROM `kohls-bda-lle.dp_merchandising_uat.bqt_size_codes`;
+
+Size_Metrics:
+Load * Inline [
+Metric, Size_Metric
+Demand Sales Units, Demand Sales Units
+EOH Units, EOH Units
+On Order Units, On Order Units
+On Order Units N4W, On Order Units N4W
+GAFS Units, GAFS Units
+Kohls Unit Turn, Kohls Unit Turn
+EOH Units % TTL, EOH Units % TTL
+Demand Sales Units % TTL, Demand Sales Units % TTL
+On Order Units % TTL, On Order Units % TTL
+On Order Units N4W % TTL, On Order Units N4W % TTL
+GAFS Units % TTL, GAFS Units % TTL
+];
+
+Size_Dimensions:
+Load * Inline [
+Dimension_Label
+Size Group
+Size Name
+];
+
+// ******************************************************
+// **	Style Summary Cache
+// ******************************************************
+/*
+    Cache final data model to QVDs to be used by historical
+    Style Summary ODAG
+*/
+
+Let vTblCount = NoOfTables()-1;
+
+for x = $(vTblCount) to 0 Step - 1
+
+	let vTableName = TableName($(x));
+    let vCachePath = Lower('$(vRepoBasePath)/prepared/data_models/style_summary/$(vFY)-w$(vFW)/$(vTableName).qvd');
+    
+    // On Order is always current and cannot be rebuilt historically
+    If WildMatch('$(vTableName)','On_Order') = 0 Then
+    	Store [$(vTableName)] into [$(vCachePath)](qvd);
+    EndIf;
+    
+next x
+
+// ******************************************************
+// **	Optimization
+// ******************************************************
+
+// Keys should be prefixed with %.
+// Reduces memory and speeds up joins
+Autonumber "%*";
+
+
+// ******************************************************
+// **	Validation
+// ******************************************************
+
+// // Subroutine
+// $(Must_Include=lib://$(vEnv)-repository:gcs_qlik/foundation/bi/enterprise-v2/subroutines/s_trigger_gitlab_orchestration.txt);
+
+// // Pipeline Params
+// Let vBranch = If('$(vEnv)'='prd','main','dev');
+// Let vEvent = 'kohls.qlik.validation.trigger';
+// Let vData = '{"environment":"$(vEnv)", "id": "$(vAppId)", "name":"$(vAppName)", "comment":"Triggered from qlik load script: qvf_merchant_style_summary.txt"}';
+
+// // Validate
+// Call trigger_gitlab_orchestration(vBranch,vEvent,vData,'N');

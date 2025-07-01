@@ -204,6 +204,7 @@ documents.onDidChangeContent(change => {
 
 async function validateTextDocument(textDocument: TextDocument): Promise<Diagnostic[]> {
 	const settings = await getDocumentSettings(textDocument.uri);
+	console.log('[DEBUG] Effective Settings:', settings);
 	const text = textDocument.getText();
 
 	if (settings.linter.active === false) {
