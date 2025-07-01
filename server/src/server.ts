@@ -38,6 +38,7 @@ import { QlikLanguageServerSettings } from './configuration/QlikLanguageServerSe
 import { semanticTokenFinder } from './semanicToken/semanticTokenFinder';
 import { getAsAlignmentDiagnostics } from './linter/asAlingment';
 import { getParenthesisDiagnostics } from './linter/parenthesesMatch';
+import { getCommaDiagnostics } from './linter/commasMatch';
 
 let qlikKeywords: string[] = [];
 
@@ -134,7 +135,8 @@ const defaultSettings: QlikLanguageServerSettings = {
 		active: true,
 		keywordsUppercase: true,
 		asAlingment: true,
-		parenthesesMatch: true
+		parenthesesMatch: true,
+		commasMatch: true
 	}
 };
 let globalSettings: QlikLanguageServerSettings = defaultSettings;
@@ -221,6 +223,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<Diagnos
 	}
 	// Add other diagnostic checks here in future, if needed
 	if (settings.linter.parenthesesMatch) {
+		diagnostics.push(...getParenthesisDiagnostics(text, textDocument, settings.maxNumberOfProblems));
+	}
+
+	if (settings.linter.commasMatch) {
 		diagnostics.push(...getParenthesisDiagnostics(text, textDocument, settings.maxNumberOfProblems));
 	}
 	return diagnostics;

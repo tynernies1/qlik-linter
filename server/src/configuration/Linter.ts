@@ -4,4 +4,5 @@ export interface Linter {
 	active: boolean;
 	asAlingment: boolean;
 	parenthesesMatch: boolean;
+	commasMatch: boolean;
 }

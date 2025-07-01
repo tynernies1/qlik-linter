@@ -80,6 +80,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Use Linter to check if parentheses are matched."
+				},
+				"qliklanguageServer.linter.commasMatch": {
+					"type": "boolean",
+					"default": true,
+					"description": "Use Linter to check if commas are present everywhere."
 				}
 			}
 		}

@@ -4,7 +4,6 @@ client/server
 .vscode-test
 .DS_Store
 *.vsix
-validation/test.qvs
-validation/fullfile.qvs
+validation
 *.tsbuildinfo
-server/src/testParentheses.ts
+server/src/testLogic.ts
